@@ -8,8 +8,6 @@ import (
 )
 
 type NewOpt func(*PixelSort) *PixelSort
-type ThresholdFunc func(r, g, b, a uint32) bool
-type SortFunc func(a, b color.Color) bool
 
 type SortDir int64
 
@@ -18,11 +16,8 @@ const (
 	Vertical
 )
 
-const ThresholdScale = 256
-
 type PixelSort struct {
-	seed int64
-
+	seed            int64
 	image           *image.RGBA64
 	format          string
 	sortDir         SortDir
@@ -55,7 +50,7 @@ func New(path string, opts ...NewOpt) (*PixelSort, error) {
 		image:           image,
 		format:          format,
 		threshold:       -1,
-		pixelSorterFunc: SaturationComp,
+		pixelSorterFunc: MeanComp,
 	}
 	ps.breaksThreshold = ps.ThresholdColorMean
 

@@ -2,7 +2,9 @@ package pixelsort
 
 import "image/color"
 
-func SaturationComp(a, b color.Color) bool {
+type SortFunc func(a, b color.Color) bool
+
+func MeanComp(a, b color.Color) bool {
 	aR, aG, aB, _ := a.RGBA()
 	bR, bG, bB, _ := b.RGBA()
 	aVal := (aR + aG + aB) / 3
