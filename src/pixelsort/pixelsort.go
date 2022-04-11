@@ -94,21 +94,28 @@ func WithThreshold(threshold int) NewOpt {
 func (ps *PixelSort) Sort() image.Image {
 	// TODO: swap based on ps.sortDir
 	min, max := ps.image.Bounds().Min, ps.image.Bounds().Max
+
+	ch := make(chan bool)
 	for row := min.X; row < max.X; row++ {
-		for col := min.Y; col < max.Y; col++ {
-			chunk := ps.getChunk(row, col)
-
-			sort.Slice(chunk, func(i, j int) bool {
-				return ps.pixelSorterFunc(chunk[i], chunk[j])
-			})
-
-			for i, c := range chunk {
-				ps.image.Set(row, col+i, c)
+		go func(row int) {
+			for col := min.Y; col < max.Y; col++ {
+				chunk := ps.getChunk(row, col)
+				sort.Slice(chunk, func(i, j int) bool {
+					return ps.pixelSorterFunc(chunk[i], chunk[j])
+				})
+				for i, c := range chunk {
+					ps.image.Set(row, col+i, c)
+				}
+				col += len(chunk)
 			}
-
-			col += len(chunk)
-		}
+			ch <- true
+		}(row)
 	}
+
+	for i := min.X; i < max.X; i++ {
+		<-ch
+	}
+
 	return ps.image
 }
 
