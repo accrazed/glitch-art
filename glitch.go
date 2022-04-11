@@ -4,6 +4,7 @@ import (
 	"image/png"
 	"log"
 	"os"
+	"strings"
 
 	ps "github.com/accrazed/glitch-art/src/pixelsort"
 
@@ -38,11 +39,18 @@ func main() {
 						Usage:    "threshold to use for saturation sorting",
 						Required: true,
 					},
+					&cli.BoolFlag{
+						Name:     "invert",
+						Aliases:  []string{"i"},
+						Usage:    "invert sorting algorithm direction",
+						Value:    false,
+						Required: false,
+					},
 					&cli.StringFlag{
 						Name:     "direction",
 						Aliases:  []string{"d"},
 						Usage:    "direction to sort in",
-						Value:    "horizontal",
+						Value:    "vertical",
 						Required: false,
 					},
 					&cli.StringFlag{
@@ -54,15 +62,16 @@ func main() {
 					},
 				},
 				Action: func(ctx *cli.Context) error {
-					var sortDir ps.SortDir = ps.Horizontal
-					if ctx.String("direction") == "vertical" {
-						sortDir = ps.Vertical
+					var sortDir ps.SortDir = ps.Vertical
+					if strings.ToLower(ctx.String("direction")) == "horizontal" {
+						sortDir = ps.Horizontal
 					}
 
 					pixSort := ps.Must(ps.New(ctx.String("path"),
 						ps.WithSortDir(sortDir),
 						ps.WithSeed(ctx.Int64("seed")),
 						ps.WithThreshold(ctx.Int("threshold")),
+						ps.WithInvert(ctx.Bool("invert")),
 					))
 
 					img := pixSort.Sort()
