@@ -135,6 +135,21 @@ func main() {
 						Value:    "0,0",
 						Required: false,
 					},
+					&cli.IntFlag{
+						Name:    "chunk",
+						Aliases: []string{"c"},
+						Usage:   "How many pixels to chunk volatility by",
+					},
+					&cli.IntFlag{
+						Name:    "volatility",
+						Aliases: []string{"v"},
+						Usage:   "How strongly to shift pixels per chunk",
+					},
+					&cli.Int64Flag{
+						Name:    "seed",
+						Aliases: []string{"s"},
+						Usage:   "Seed to base chunking/volatility off of",
+					},
 				},
 				Action: func(ctx *cli.Context) error {
 					rX, rY, err := parseCoord(ctx.String("red"))
@@ -159,6 +174,9 @@ func main() {
 						cs.GreenShift(gX, gY),
 						cs.BlueShift(bX, bY),
 						cs.AlphaShift(aX, aY),
+						cs.WithChunks(ctx.Int("chunk")),
+						cs.WithVolatility(ctx.Int("volatility")),
+						cs.WithSeed(ctx.Int64("seed")),
 					))
 
 					img := chanShift.Shift()

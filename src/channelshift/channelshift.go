@@ -2,6 +2,8 @@ package channelshift
 
 import (
 	"image"
+	"math"
+	"math/rand"
 
 	"github.com/accrazed/glitch-art/src/lib"
 )
@@ -9,9 +11,13 @@ import (
 type NewOpt func(*ChannelShift) *ChannelShift
 
 type ChannelShift struct {
-	format string
-	tran   Translate
-	image  *image.RGBA64
+	format     string
+	translate  Translate
+	image      *image.RGBA64
+	seed       int64
+	rand       *rand.Rand
+	volatility int
+	chunk      int
 }
 
 type Translate struct {
@@ -37,83 +43,126 @@ func New(path string, opts ...NewOpt) (*ChannelShift, error) {
 	cs := &ChannelShift{
 		image:  img,
 		format: format,
-		tran: Translate{
-			r: image.Point{100, 0},
-			g: image.Point{30, 0},
-			b: image.Point{500, 0},
-		},
 	}
 	for _, opt := range opts {
 		cs = opt(cs)
 	}
 
+	if cs.rand == nil {
+		cs.rand = rand.New(rand.NewSource(0))
+	}
+
 	return cs, nil
 }
 
+func WithChunks(dist int) NewOpt {
+	return func(cs *ChannelShift) *ChannelShift {
+		cs.chunk = dist
+		return cs
+	}
+}
+
+func WithSeed(seed int64) NewOpt {
+	return func(cs *ChannelShift) *ChannelShift {
+		cs.seed = seed
+		cs.rand = rand.New(rand.NewSource(seed))
+		return cs
+	}
+}
+
+func WithVolatility(volatility int) NewOpt {
+	return func(cs *ChannelShift) *ChannelShift {
+		cs.volatility = volatility
+		return cs
+	}
+}
 func RedShift(x, y int) NewOpt {
 	return func(cs *ChannelShift) *ChannelShift {
-		cs.tran.r.X = x
-		cs.tran.r.Y = y
+		cs.translate.r.X = x
+		cs.translate.r.Y = y
 		return cs
 	}
 }
 
 func GreenShift(x, y int) NewOpt {
 	return func(cs *ChannelShift) *ChannelShift {
-		cs.tran.g.X = x
-		cs.tran.g.Y = y
+		cs.translate.g.X = x
+		cs.translate.g.Y = y
 		return cs
 	}
 }
 
 func BlueShift(x, y int) NewOpt {
 	return func(cs *ChannelShift) *ChannelShift {
-		cs.tran.b.X = x
-		cs.tran.b.Y = y
+		cs.translate.b.X = x
+		cs.translate.b.Y = y
 		return cs
 	}
 }
 
 func AlphaShift(x, y int) NewOpt {
 	return func(cs *ChannelShift) *ChannelShift {
-		cs.tran.a.X = x
-		cs.tran.a.Y = y
+		cs.translate.a.X = x
+		cs.translate.a.Y = y
 		return cs
 	}
 }
 
 func (cs *ChannelShift) Shift() image.Image {
-	width, height := cs.image.Rect.Dx(), cs.image.Rect.Dy()
+	w, h := cs.image.Rect.Dx(), cs.image.Rect.Dy()
 
-	img := lib.CopyImage(cs.image)
+	outImg := lib.CopyImage(cs.image)
+	offsetIndex := -1
+	offset := 0
 
-	for x := 0; x < width; x++ {
-		for y := 0; y < height; y++ {
-			old := RGBA64toPix(x, y, cs.image.Stride)
+	for x := 0; x < w; x++ {
+		if cs.chunk != 0 && x/cs.chunk != offsetIndex {
+			offsetIndex = x / cs.chunk
+			offset = (cs.rand.Int() % (cs.volatility * 2)) - cs.volatility
+		}
 
-			newRed := RGBA64toPix((x+cs.tran.r.X)%width, (y+cs.tran.r.Y)%height, cs.image.Stride)
-			newGreen := RGBA64toPix((x+cs.tran.g.X)%width, (y+cs.tran.g.Y)%height, cs.image.Stride)
-			newBlue := RGBA64toPix((x+cs.tran.b.X)%width, (y+cs.tran.b.Y)%height, cs.image.Stride)
-			newAlpha := RGBA64toPix((x+cs.tran.a.X)%width, (y+cs.tran.a.Y)%height, cs.image.Stride)
+		for y := 0; y < h; y++ {
+			old := rgba64toPix(x, y, cs.image.Stride)
+
+			newR := rgba64toPix(
+				(x+cs.translate.r.X+offset)%w,
+				(y+cs.translate.r.Y+offset)%h,
+				cs.image.Stride)
+			newG := rgba64toPix(
+				(x+cs.translate.g.X+offset)%w,
+				(y+cs.translate.g.Y+offset)%h,
+				cs.image.Stride)
+			newB := rgba64toPix(
+				(x+cs.translate.b.X+offset)%w,
+				(y+cs.translate.b.Y+offset)%h,
+				cs.image.Stride)
+			newA := rgba64toPix(
+				(x+cs.translate.a.X+offset)%w,
+				(y+cs.translate.a.Y+offset)%h,
+				cs.image.Stride)
+
+			newR = int(math.Abs(float64(newR)))
+			newG = int(math.Abs(float64(newG)))
+			newB = int(math.Abs(float64(newB)))
+			newA = int(math.Abs(float64(newA)))
 
 			// Red
-			img.Pix[old+0] = cs.image.Pix[newRed+0]
-			img.Pix[old+1] = cs.image.Pix[newRed+1]
+			outImg.Pix[old+0] = cs.image.Pix[newR+0]
+			outImg.Pix[old+1] = cs.image.Pix[newR+1]
 			// Green
-			img.Pix[old+2] = cs.image.Pix[newGreen+2]
-			img.Pix[old+3] = cs.image.Pix[newGreen+3]
+			outImg.Pix[old+2] = cs.image.Pix[newG+2]
+			outImg.Pix[old+3] = cs.image.Pix[newG+3]
 			// Blue
-			img.Pix[old+4] = cs.image.Pix[newBlue+4]
-			img.Pix[old+5] = cs.image.Pix[newBlue+5]
+			outImg.Pix[old+4] = cs.image.Pix[newB+4]
+			outImg.Pix[old+5] = cs.image.Pix[newB+5]
 			// Alpha
-			img.Pix[old+6] = cs.image.Pix[newAlpha+6]
-			img.Pix[old+7] = cs.image.Pix[newAlpha+7]
+			outImg.Pix[old+6] = cs.image.Pix[newA+6]
+			outImg.Pix[old+7] = cs.image.Pix[newA+7]
 		}
 	}
-
-	return img
+	return outImg
 }
 
-func RGBA64toPix(x, y, stride int) int {
+func rgba64toPix(x, y, stride int) int {
 	return y*stride + x*8
 }
