@@ -1,6 +1,9 @@
 package lib
 
-import "image"
+import (
+	"image"
+	"os"
+)
 
 func CopyImage(img image.Image) *image.RGBA64 {
 	res := image.NewRGBA64(img.Bounds())
@@ -13,4 +16,20 @@ func CopyImage(img image.Image) *image.RGBA64 {
 	}
 
 	return res
+}
+
+func NewImage(path string) (*image.RGBA64, string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, "", err
+	}
+
+	roImage, format, err := image.Decode(f)
+	if err != nil {
+		return nil, "", err
+	}
+
+	image := CopyImage(roImage)
+
+	return image, format, nil
 }

@@ -3,7 +3,6 @@ package pixelsort
 import (
 	"image"
 	"image/color"
-	"os"
 	"sort"
 
 	"github.com/accrazed/glitch-art/src/lib"
@@ -37,17 +36,10 @@ func Must(ps *PixelSort, err error) *PixelSort {
 }
 
 func New(path string, opts ...NewOpt) (*PixelSort, error) {
-	f, err := os.Open(path)
+	image, format, err := lib.NewImage(path)
 	if err != nil {
 		return nil, err
 	}
-
-	roImage, format, err := image.Decode(f)
-	if err != nil {
-		return nil, err
-	}
-
-	image := lib.CopyImage(roImage)
 
 	ps := &PixelSort{
 		image:      image,
@@ -147,8 +139,7 @@ func (ps *PixelSort) getChunk(slice, pos, sMax int) []color.Color {
 			sl, cur = cur, sl
 		}
 
-		r, g, b, a := ps.image.At(sl, cur).RGBA()
-		if ps.thresholdFunc(r, g, b, a) {
+		if ps.thresholdFunc(ps.image.At(sl, cur)) {
 			break
 		}
 		res = append(res, ps.image.At(sl, cur))
