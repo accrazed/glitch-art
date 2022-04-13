@@ -33,3 +33,7 @@ func NewImage(path string) (*image.RGBA64, string, error) {
 
 	return image, format, nil
 }
+
+func RGBA64toPix(x, y, stride int) int {
+	return y*stride + x*8
+}

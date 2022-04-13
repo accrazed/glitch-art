@@ -136,14 +136,16 @@ func main() {
 						Required: false,
 					},
 					&cli.IntFlag{
-						Name:    "chunk",
-						Aliases: []string{"c"},
-						Usage:   "How many pixels to chunk volatility by",
+						Name:     "chunk",
+						Aliases:  []string{"c"},
+						Usage:    "How many pixels to chunk volatility by",
+						Required: false,
 					},
 					&cli.IntFlag{
-						Name:    "volatility",
-						Aliases: []string{"v"},
-						Usage:   "How strongly to shift pixels per chunk",
+						Name:     "volatility",
+						Aliases:  []string{"v"},
+						Usage:    "How strongly to shift pixels per chunk",
+						Required: false,
 					},
 					&cli.Int64Flag{
 						Name:    "seed",
