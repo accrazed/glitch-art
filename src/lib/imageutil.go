@@ -2,7 +2,8 @@ package lib
 
 import (
 	"image"
-	"os"
+
+	"github.com/sunshineplan/imgconv"
 )
 
 func CopyImage(img image.Image) *image.RGBA64 {
@@ -18,20 +19,14 @@ func CopyImage(img image.Image) *image.RGBA64 {
 	return res
 }
 
-func NewImage(path string) (*image.RGBA64, string, error) {
-	f, err := os.Open(path)
+func NewImage(path string) (*image.RGBA64, error) {
+	roImage, err := imgconv.Open(path)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
-
-	roImage, format, err := image.Decode(f)
-	if err != nil {
-		return nil, "", err
-	}
-
 	image := CopyImage(roImage)
 
-	return image, format, nil
+	return image, nil
 }
 
 func RGBA64toPix(x, y, stride int) int {

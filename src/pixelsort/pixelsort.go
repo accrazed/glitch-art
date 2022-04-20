@@ -20,7 +20,6 @@ const (
 type PixelSort struct {
 	seed          int64
 	image         *image.RGBA64
-	format        string
 	sortDir       SortDir
 	invert        bool
 	threshold     int
@@ -36,14 +35,13 @@ func Must(ps *PixelSort, err error) *PixelSort {
 }
 
 func New(path string, opts ...NewOpt) (*PixelSort, error) {
-	image, format, err := lib.NewImage(path)
+	image, err := lib.NewImage(path)
 	if err != nil {
 		return nil, err
 	}
 
 	ps := &PixelSort{
 		image:      image,
-		format:     format,
 		threshold:  -1,
 		sorterFunc: MeanComp,
 	}

@@ -1,6 +1,7 @@
 package channelshift
 
 import (
+	"fmt"
 	"image"
 	"math"
 	"math/rand"
@@ -11,13 +12,14 @@ import (
 type NewOpt func(*ChannelShift) *ChannelShift
 
 type ChannelShift struct {
-	format     string
-	translate  Translate
-	image      *image.RGBA64
-	seed       int64
-	rand       *rand.Rand
-	volatility int
-	chunk      int
+	translate          Translate
+	image              *image.RGBA64
+	seed               int64
+	rand               *rand.Rand
+	volatility         int
+	chunk              int
+	animate            int
+	aniChunkVolatility int
 }
 
 type Translate struct {
@@ -35,14 +37,13 @@ func Must(ps *ChannelShift, err error) *ChannelShift {
 }
 
 func New(path string, opts ...NewOpt) (*ChannelShift, error) {
-	img, format, err := lib.NewImage(path)
+	img, err := lib.NewImage(path)
 	if err != nil {
 		return nil, err
 	}
 
 	cs := &ChannelShift{
-		image:  img,
-		format: format,
+		image: img,
 	}
 	for _, opt := range opts {
 		cs = opt(cs)
@@ -76,6 +77,21 @@ func WithVolatility(volatility int) NewOpt {
 		return cs
 	}
 }
+
+func WithAnimateVolatility(anivolatility int) NewOpt {
+	return func(cs *ChannelShift) *ChannelShift {
+		cs.aniChunkVolatility = anivolatility
+		return cs
+	}
+}
+
+func WithAnimate(animate int) NewOpt {
+	return func(cs *ChannelShift) *ChannelShift {
+		cs.animate = animate
+		return cs
+	}
+}
+
 func RedShift(x, y int) NewOpt {
 	return func(cs *ChannelShift) *ChannelShift {
 		cs.translate.r.X = x
@@ -117,8 +133,13 @@ func (cs *ChannelShift) Shift() image.Image {
 
 	ch := make(chan bool)
 	for x := 0; x < w; x++ {
-		if cs.chunk != 0 && x/cs.chunk != offsetIndex {
+		if cs.chunk != 0 && cs.volatility != 0 && x/cs.chunk > offsetIndex {
 			offsetIndex = x / cs.chunk
+
+			if cs.animate != 1 && cs.aniChunkVolatility != 0 {
+				offsetIndex += cs.rand.Int() % cs.aniChunkVolatility
+			}
+
 			offset = (cs.rand.Int() % (cs.volatility * 2)) - cs.volatility
 		}
 
@@ -170,4 +191,38 @@ func (cs *ChannelShift) Shift() image.Image {
 	}
 
 	return outImg
+}
+
+func (cs *ChannelShift) ShiftIterate() []image.Image {
+	res := make([]image.Image, 0)
+
+	baseTr := cs.translate
+
+	for i := 0; i < cs.animate; i++ {
+		fmt.Printf("Generating Channelshift %v\n", i+1)
+		res = append(res, cs.Shift())
+
+		if cs.animate != 1 && cs.volatility != 0 {
+			cs.translate.r.X = baseTr.r.X + rand.Int()%(cs.volatility*2) - cs.volatility
+			cs.translate.r.Y = baseTr.r.Y + rand.Int()%(cs.volatility*2) - cs.volatility
+			cs.translate.g.X = baseTr.g.X + rand.Int()%(cs.volatility*2) - cs.volatility
+			cs.translate.g.Y = baseTr.g.Y + rand.Int()%(cs.volatility*2) - cs.volatility
+			cs.translate.b.X = baseTr.b.X + rand.Int()%(cs.volatility*2) - cs.volatility
+			cs.translate.b.Y = baseTr.b.Y + rand.Int()%(cs.volatility*2) - cs.volatility
+			cs.translate.a.X = baseTr.a.X + rand.Int()%(cs.volatility*2) - cs.volatility
+			cs.translate.a.Y = baseTr.a.Y + rand.Int()%(cs.volatility*2) - cs.volatility
+		}
+	}
+
+	// resCopy := make([]image.Image, len(res))
+	// copy(resCopy, res)
+
+	// for i := 0; i < len(resCopy)/2; i++ {
+	// 	j := len(resCopy) - i - 1
+	// 	resCopy[i], resCopy[j] = resCopy[j], resCopy[i]
+	// }
+
+	// res = append(res, resCopy...)
+
+	return res
 }

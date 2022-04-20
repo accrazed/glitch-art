@@ -1,6 +1,11 @@
 package main
 
 import (
+	"image"
+	"image/color"
+	"image/color/palette"
+	"image/draw"
+	"image/gif"
 	"image/png"
 	"log"
 	"os"
@@ -152,6 +157,18 @@ func main() {
 						Aliases: []string{"s"},
 						Usage:   "Seed to base chunking/volatility off of",
 					},
+					&cli.IntFlag{
+						Name:    "animate",
+						Aliases: []string{"gif"},
+						Usage:   "Animate to several frames :)",
+						Value:   1,
+					},
+					&cli.IntFlag{
+						Name:    "anivolatility",
+						Aliases: []string{"aniv"},
+						Usage:   "How volatile to adjust the chunk value in every iteration",
+						Value:   0,
+					},
 				},
 				Action: func(ctx *cli.Context) error {
 					rX, rY, err := parseCoord(ctx.String("red"))
@@ -179,18 +196,62 @@ func main() {
 						cs.WithChunks(ctx.Int("chunk")),
 						cs.WithVolatility(ctx.Int("volatility")),
 						cs.WithSeed(ctx.Int64("seed")),
+						cs.WithAnimate(ctx.Int("animate")),
+						cs.WithAnimateVolatility(ctx.Int("anivolatility")),
 					))
 
-					img := chanShift.Shift()
+					imgs := chanShift.ShiftIterate()
 
-					f, err := os.Create(ctx.String("output") + ".png")
-					if err != nil {
-						return err
+					// Single image channelshift
+					if len(imgs) == 1 {
+						img := imgs[0]
+						f, err := os.Create(ctx.String("output") + ".png")
+						if err != nil {
+							return err
+						}
+
+						err = png.Encode(f, img)
+						if err != nil {
+							return err
+						}
+					} else {
+						// animated gif channelshift
+						f, err := os.Create(ctx.String("output") + ".gif")
+						if err != nil {
+							return err
+						}
+
+						for i, img := range imgs {
+							var palette color.Palette = append(palette.WebSafe, color.Transparent)
+							bounds := img.Bounds()
+							dst := image.NewPaletted(bounds, palette)
+							draw.Draw(dst, bounds, img, bounds.Min, draw.Src)
+
+							imgs[i] = dst
+						}
+
+						delay := make([]int, len(imgs))
+						for i := range delay {
+							delay[i] = 10
+						}
+
+						disposal := make([]byte, len(imgs))
+						for i := range disposal {
+							disposal[i] = gif.DisposalBackground
+						}
+
+						oImgs := make([]*image.Paletted, 0)
+						for _, img := range imgs {
+							oImgs = append(oImgs, img.(*image.Paletted))
+						}
+
+						gif.EncodeAll(f, &gif.GIF{
+							Image:    oImgs,
+							Delay:    delay,
+							Disposal: disposal,
+						})
 					}
-					err = png.Encode(f, img)
-					if err != nil {
-						return err
-					}
+
 					return nil
 				},
 			},
