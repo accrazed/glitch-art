@@ -142,10 +142,8 @@ func (cs *ChannelShift) Shift() image.Image {
 	}
 
 	numSlices, numPos := cs.image.Rect.Dx(), cs.image.Rect.Dy()
-	fmt.Println(numSlices, numPos)
 
 	outImg := lib.CopyImage(cs.image)
-	fmt.Println(outImg.Rect.Dx(), outImg.Rect.Dy())
 	offset := 0
 
 	ch := make(chan bool)
