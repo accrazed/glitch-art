@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	cs "github.com/accrazed/glitch-art/src/channelshift"
+	"github.com/accrazed/glitch-art/src/lib"
 	ps "github.com/accrazed/glitch-art/src/pixelsort"
 
 	"github.com/urfave/cli/v2"
@@ -69,13 +70,14 @@ func main() {
 					},
 				},
 				Action: func(ctx *cli.Context) error {
-					var sortDir ps.SortDir = ps.Vertical
+					sortDir := lib.Vertical
 					if strings.ToLower(ctx.String("direction")) == "horizontal" {
-						sortDir = ps.Horizontal
+						sortDir = lib.Horizontal
 					}
 
-					pixSort := ps.Must(ps.New(ctx.String("path"),
-						ps.WithSortDir(sortDir),
+					pixSort := ps.Must(ps.New(
+						ctx.String("path"),
+						ps.WithDirection(sortDir),
 						ps.WithSeed(ctx.Int64("seed")),
 						ps.WithThreshold(ctx.Int("threshold")),
 						ps.WithInvert(ctx.Bool("invert")),
@@ -146,6 +148,12 @@ func main() {
 						Usage:    "How many pixels to chunk volatility by",
 						Required: false,
 					},
+					&cli.StringFlag{
+						Name:     "direction",
+						Aliases:  []string{"d"},
+						Usage:    "Which direction to chunk the image in",
+						Required: false,
+					},
 					&cli.IntFlag{
 						Name:     "volatility",
 						Aliases:  []string{"v"},
@@ -188,16 +196,22 @@ func main() {
 						return err
 					}
 
+					sortDir := lib.Vertical
+					if strings.ToLower(ctx.String("direction")) == "horizontal" {
+						sortDir = lib.Horizontal
+					}
+
 					chanShift := cs.Must(cs.New(ctx.String("path"),
 						cs.RedShift(rX, rY),
 						cs.GreenShift(gX, gY),
 						cs.BlueShift(bX, bY),
 						cs.AlphaShift(aX, aY),
 						cs.WithChunks(ctx.Int("chunk")),
-						cs.WithVolatility(ctx.Int("volatility")),
+						cs.WithOffsetVolatility(ctx.Int("volatility")),
 						cs.WithSeed(ctx.Int64("seed")),
 						cs.WithAnimate(ctx.Int("animate")),
-						cs.WithAnimateVolatility(ctx.Int("anivolatility")),
+						cs.WithChunkVolatility(ctx.Int("anivolatility")),
+						cs.WithDirection(sortDir),
 					))
 
 					imgs := chanShift.ShiftIterate()

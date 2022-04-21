@@ -10,17 +10,11 @@ import (
 
 type NewOpt func(*PixelSort) *PixelSort
 
-type SortDir int
-
-const (
-	Vertical SortDir = iota
-	Horizontal
-)
-
 type PixelSort struct {
+	image *image.RGBA64
+
 	seed          int64
-	image         *image.RGBA64
-	sortDir       SortDir
+	direction     lib.Direction
 	invert        bool
 	threshold     int
 	thresholdFunc ThresholdFunc
@@ -58,9 +52,9 @@ func New(path string, opts ...NewOpt) (*PixelSort, error) {
 	return ps, nil
 }
 
-func WithSortDir(dir SortDir) NewOpt {
+func WithDirection(dir lib.Direction) NewOpt {
 	return func(ps *PixelSort) *PixelSort {
-		ps.sortDir = dir
+		ps.direction = dir
 		return ps
 	}
 }
@@ -89,7 +83,7 @@ func WithInvert(invert bool) NewOpt {
 func (ps *PixelSort) Sort() image.Image {
 	min, max := ps.image.Bounds().Min, ps.image.Bounds().Max
 	pMin, pMax, sMin, sMax := min.X, max.X, min.Y, max.Y
-	if ps.sortDir == Horizontal {
+	if ps.direction == lib.Horizontal {
 		pMin, pMax, sMin, sMax = min.Y, max.Y, min.X, max.X
 	}
 
@@ -108,7 +102,7 @@ func (ps *PixelSort) Sort() image.Image {
 				// Save data
 				for i, c := range chunk {
 					sl, p := slice, pos+i
-					if ps.sortDir == Horizontal {
+					if ps.direction == lib.Horizontal {
 						sl, p = p, sl
 					}
 					ps.image.Set(sl, p, c)
@@ -133,7 +127,7 @@ func (ps *PixelSort) getChunk(slice, pos, sMax int) []color.Color {
 	for c := pos; c < sMax; c++ {
 		sl := slice
 		cur := c
-		if ps.sortDir == Horizontal {
+		if ps.direction == lib.Horizontal {
 			sl, cur = cur, sl
 		}
 
