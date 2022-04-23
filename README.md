@@ -2,4 +2,5 @@
 go-based library for making glitch art
 
 ## TODOs:
-- Animated color-shifting
+- Datamoshing
+- Polynomial pixel sorting (as opposed to constants, horizontal or vertical)
