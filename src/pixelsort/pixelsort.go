@@ -39,7 +39,7 @@ func New(path string, opts ...NewOpt) (*PixelSort, error) {
 		threshold:  -1,
 		sorterFunc: MeanComp,
 	}
-	ps.thresholdFunc = ps.ThresholdColorMean
+	ps.thresholdFunc = ps.OutThresholdColorMean
 
 	for _, opt := range opts {
 		ps = opt(ps)
