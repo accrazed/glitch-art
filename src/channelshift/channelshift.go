@@ -58,6 +58,13 @@ func New(path string, opts ...NewOpt) (*ChannelShift, error) {
 		cs.chunkVol = cs.chunk
 	}
 
+	if cs.chunk == 0 {
+		if cs.image.Rect.Dx() > cs.image.Rect.Dy() {
+			cs.chunk = cs.image.Rect.Dx()
+		}
+		cs.chunk = cs.image.Rect.Dy()
+	}
+
 	return cs, nil
 }
 
@@ -137,39 +144,45 @@ func AlphaShift(x, y int) NewOpt {
 }
 
 func (cs *ChannelShift) Shift() image.Image {
-	if cs.direction == lib.Horizontal {
-		cs.image = lib.CopyImage(cs.image, true)
-	}
-
 	numSlices, numPos := cs.image.Rect.Dx(), cs.image.Rect.Dy()
+	if cs.direction == lib.Horizontal {
+		numSlices, numPos = numPos, numSlices
+	}
 
 	outImg := lib.CopyImage(cs.image)
 	offset := 0
 
 	ch := make(chan bool)
-	curSlice := 0
-	for curSlice < numSlices {
+
+	// Iterate through slices perpendicular to chunking directions
+	for curSlice := 0; curSlice < numSlices; {
 		chunkSize := cs.chunk
 		if cs.chunkVol > 0 {
 			chunkSize = cs.chunk + cs.rand.Intn(cs.chunkVol*2) - cs.chunkVol
+			offset = (cs.rand.Int() % (cs.offsetVol * 2)) - cs.offsetVol
 		}
 
-		offset = (cs.rand.Int() % (cs.offsetVol * 2)) - cs.offsetVol
-
+		// Shift each slice
 		var cur int
 		for cur = 0; cur < chunkSize && cur+curSlice < numSlices; cur++ {
-			go func(curSlice, offset int) {
+			go func(slice, offset int) {
 				for pos := 0; pos < numPos; pos++ {
-					old := lib.RGBA64toPix(curSlice, pos, cs.image.Stride)
+					sl, ps := numSlices, numPos
+					if cs.direction == lib.Horizontal {
+						sl, ps = ps, sl
+						slice, pos = pos, slice
+					}
 
-					rX, rY := (curSlice+cs.translate.r.X+offset)%numSlices,
-						(pos+cs.translate.r.Y+offset)%numPos
-					gX, gY := (curSlice+cs.translate.g.X+offset)%numSlices,
-						(pos+cs.translate.g.Y+offset)%numPos
-					bX, bY := (curSlice+cs.translate.b.X+offset)%numSlices,
-						(pos+cs.translate.b.Y+offset)%numPos
-					aX, aY := (curSlice+cs.translate.a.X+offset)%numSlices,
-						(pos+cs.translate.a.Y+offset)%numPos
+					old := lib.RGBA64toPix(slice, pos, cs.image.Stride)
+
+					rX, rY := (slice+cs.translate.r.X+offset)%sl,
+						(pos+cs.translate.r.Y+offset)%ps
+					gX, gY := (slice+cs.translate.g.X+offset)%sl,
+						(pos+cs.translate.g.Y+offset)%ps
+					bX, bY := (slice+cs.translate.b.X+offset)%sl,
+						(pos+cs.translate.b.Y+offset)%ps
+					aX, aY := (slice+cs.translate.a.X+offset)%sl,
+						(pos+cs.translate.a.Y+offset)%ps
 
 					newR := int(math.Abs(float64(lib.RGBA64toPix(rX, rY, cs.image.Stride))))
 					newG := int(math.Abs(float64(lib.RGBA64toPix(gX, gY, cs.image.Stride))))
@@ -188,6 +201,10 @@ func (cs *ChannelShift) Shift() image.Image {
 					// Alpha
 					outImg.Pix[old+6] = cs.image.Pix[newA+6]
 					outImg.Pix[old+7] = cs.image.Pix[newA+7]
+
+					if cs.direction == lib.Horizontal {
+						slice, pos = pos, slice
+					}
 				}
 				ch <- true
 			}(curSlice+cur, offset)
@@ -196,11 +213,6 @@ func (cs *ChannelShift) Shift() image.Image {
 	}
 	for i := 0; i < numSlices; i++ {
 		<-ch
-	}
-
-	if cs.direction == lib.Horizontal {
-		outImg = lib.CopyImage(outImg, true)
-		cs.image = lib.CopyImage(cs.image, true)
 	}
 
 	return outImg

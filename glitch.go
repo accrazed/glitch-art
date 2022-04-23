@@ -235,28 +235,20 @@ func main() {
 							return err
 						}
 
+						var palette color.Palette = append(palette.WebSafe, color.Transparent)
+
+						// Prepare gif options
+						delay := make([]int, len(imgs))
+						disposal := make([]byte, len(imgs))
+						oImgs := make([]*image.Paletted, len(imgs))
 						for i, img := range imgs {
-							var palette color.Palette = append(palette.WebSafe, color.Transparent)
 							bounds := img.Bounds()
 							dst := image.NewPaletted(bounds, palette)
 							draw.Draw(dst, bounds, img, bounds.Min, draw.Src)
+							oImgs[i] = dst
 
-							imgs[i] = dst
-						}
-
-						delay := make([]int, len(imgs))
-						for i := range delay {
 							delay[i] = 10
-						}
-
-						disposal := make([]byte, len(imgs))
-						for i := range disposal {
 							disposal[i] = gif.DisposalBackground
-						}
-
-						oImgs := make([]*image.Paletted, 0)
-						for _, img := range imgs {
-							oImgs = append(oImgs, img.(*image.Paletted))
 						}
 
 						gif.EncodeAll(f, &gif.GIF{
