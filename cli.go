@@ -47,6 +47,12 @@ func main() {
 						Usage:    "threshold to use for saturation sorting",
 						Required: true,
 					},
+					&cli.IntFlag{
+						Name:     "chunklim",
+						Aliases:  []string{"cl"},
+						Usage:    "max chunk length a chunk can be be before sorting",
+						Required: false,
+					},
 					&cli.BoolFlag{
 						Name:     "invert",
 						Aliases:  []string{"i"},
@@ -202,6 +208,7 @@ func DoPixelSort(ctx *cli.Context) error {
 		ps.WithInvert(ctx.Bool("invert")),
 		ps.WithSortFuncString(ctx.String("sortfunc")),
 		ps.WithThresholdFuncString(ctx.String("thresholdfunc")),
+		ps.WithChunkLimit(ctx.Int("chunklim")),
 	))
 
 	img := pixSort.Sort()
