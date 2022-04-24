@@ -1,8 +1,10 @@
 package pixelsort
 
 import (
+	"fmt"
 	"image"
 	"image/color"
+	"reflect"
 	"sort"
 
 	"github.com/accrazed/glitch-art/src/lib"
@@ -17,8 +19,8 @@ type PixelSort struct {
 	direction     lib.Direction
 	invert        bool
 	threshold     int
-	thresholdFunc ThresholdFunc
-	sorterFunc    SorterFunc
+	ThresholdFunc ThresholdFunc
+	SorterFunc    SorterFunc
 }
 
 func Must(ps *PixelSort, err error) *PixelSort {
@@ -35,11 +37,11 @@ func New(path string, opts ...NewOpt) (*PixelSort, error) {
 	}
 
 	ps := &PixelSort{
-		image:      image,
-		threshold:  -1,
-		sorterFunc: MeanComp,
+		image:     image,
+		threshold: -1,
 	}
-	ps.thresholdFunc = ps.OutThresholdColorMean
+	ps.SorterFunc = ps.MeanComp
+	ps.ThresholdFunc = ps.OutThresholdColorMean
 
 	for _, opt := range opts {
 		ps = opt(ps)
@@ -73,6 +75,36 @@ func WithThreshold(threshold int) NewOpt {
 	}
 }
 
+func WithSortFunc(sortFunc string) NewOpt {
+	return func(ps *PixelSort) *PixelSort {
+		vPS := reflect.ValueOf(ps)
+
+		vMethod := vPS.MethodByName(sortFunc)
+		zero := reflect.Value{}
+		if vMethod == zero {
+			panic(fmt.Sprintf("sort func %s not found", sortFunc))
+		}
+		vPS.Elem().FieldByName("SorterFunc").Set(vMethod)
+
+		return ps
+	}
+}
+
+func WithThresholdFunc(thresholdFunc string) NewOpt {
+	return func(ps *PixelSort) *PixelSort {
+		vPS := reflect.ValueOf(ps)
+
+		vMethod := vPS.MethodByName(thresholdFunc)
+		zero := reflect.Value{}
+		if vMethod == zero {
+			panic(fmt.Sprintf("threshold func %s not found", thresholdFunc))
+		}
+		vPS.Elem().FieldByName("ThresholdFunc").Set(vMethod)
+
+		return ps
+	}
+}
+
 func WithInvert(invert bool) NewOpt {
 	return func(ps *PixelSort) *PixelSort {
 		ps.invert = invert
@@ -96,7 +128,7 @@ func (ps *PixelSort) Sort() image.Image {
 				// Group and sort chunk
 				chunk := ps.getChunk(slice, pos, sMax)
 				sort.Slice(chunk, func(i, j int) bool {
-					return ps.sorterFunc(chunk[i], chunk[j]) != ps.invert
+					return ps.SorterFunc(chunk[i], chunk[j]) != ps.invert
 				})
 
 				// Save data
@@ -131,7 +163,7 @@ func (ps *PixelSort) getChunk(slice, pos, sMax int) []color.Color {
 			sl, cur = cur, sl
 		}
 
-		if ps.thresholdFunc(ps.image.At(sl, cur)) {
+		if ps.ThresholdFunc(ps.image.At(sl, cur)) {
 			break
 		}
 		res = append(res, ps.image.At(sl, cur))

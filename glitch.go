@@ -62,6 +62,18 @@ func main() {
 						Required: false,
 					},
 					&cli.StringFlag{
+						Name:    "sortfunc",
+						Aliases: []string{"sf"},
+						Usage:   "Sorting func to use when pixel sorting. Refer to sorts.go",
+						Value:   "MeanComp",
+					},
+					&cli.StringFlag{
+						Name:    "thresholdfunc",
+						Aliases: []string{"tf"},
+						Usage:   "Threshold func to use when pixel sorting. Refer to thresholds.go",
+						Value:   "OutThresholdColorMean",
+					},
+					&cli.StringFlag{
 						Name:     "output",
 						Aliases:  []string{"o"},
 						Usage:    "filename to output as",
@@ -69,34 +81,8 @@ func main() {
 						Required: false,
 					},
 				},
-				Action: func(ctx *cli.Context) error {
-					sortDir := lib.Vertical
-					if strings.ToLower(ctx.String("direction")) == "horizontal" {
-						sortDir = lib.Horizontal
-					}
-
-					pixSort := ps.Must(ps.New(
-						ctx.String("path"),
-						ps.WithDirection(sortDir),
-						ps.WithSeed(ctx.Int64("seed")),
-						ps.WithThreshold(ctx.Int("threshold")),
-						ps.WithInvert(ctx.Bool("invert")),
-					))
-
-					img := pixSort.Sort()
-
-					f, err := os.Create(ctx.String("output") + ".png")
-					if err != nil {
-						return err
-					}
-					err = png.Encode(f, img)
-					if err != nil {
-						return err
-					}
-					return nil
-				},
-			},
-			{
+				Action: DoPixelSort,
+			}, {
 				Name:    "channelshift",
 				Aliases: []string{"cs"},
 				Usage:   "Translates color channels on your image",
@@ -178,88 +164,7 @@ func main() {
 						Value:   0,
 					},
 				},
-				Action: func(ctx *cli.Context) error {
-					rX, rY, err := parseCoord(ctx.String("red"))
-					if err != nil {
-						return err
-					}
-					gX, gY, err := parseCoord(ctx.String("green"))
-					if err != nil {
-						return err
-					}
-					bX, bY, err := parseCoord(ctx.String("blue"))
-					if err != nil {
-						return err
-					}
-					aX, aY, err := parseCoord(ctx.String("alpha"))
-					if err != nil {
-						return err
-					}
-
-					sortDir := lib.Vertical
-					if strings.ToLower(ctx.String("direction")) == "horizontal" {
-						sortDir = lib.Horizontal
-					}
-
-					chanShift := cs.Must(cs.New(ctx.String("path"),
-						cs.RedShift(rX, rY),
-						cs.GreenShift(gX, gY),
-						cs.BlueShift(bX, bY),
-						cs.AlphaShift(aX, aY),
-						cs.WithChunks(ctx.Int("chunk")),
-						cs.WithOffsetVolatility(ctx.Int("volatility")),
-						cs.WithSeed(ctx.Int64("seed")),
-						cs.WithAnimate(ctx.Int("animate")),
-						cs.WithChunkVolatility(ctx.Int("anivolatility")),
-						cs.WithDirection(sortDir),
-					))
-
-					imgs := chanShift.ShiftIterate()
-
-					// Single image channelshift
-					if len(imgs) == 1 {
-						img := imgs[0]
-						f, err := os.Create(ctx.String("output") + ".png")
-						if err != nil {
-							return err
-						}
-
-						err = png.Encode(f, img)
-						if err != nil {
-							return err
-						}
-					} else {
-						// animated gif channelshift
-						f, err := os.Create(ctx.String("output") + ".gif")
-						if err != nil {
-							return err
-						}
-
-						var palette color.Palette = append(palette.WebSafe, color.Transparent)
-
-						// Prepare gif options
-						delay := make([]int, len(imgs))
-						disposal := make([]byte, len(imgs))
-						oImgs := make([]*image.Paletted, len(imgs))
-						for i, img := range imgs {
-							bounds := img.Bounds()
-							dst := image.NewPaletted(bounds, palette)
-							draw.Draw(dst, bounds, img, bounds.Min, draw.Src)
-							oImgs[i] = dst
-
-							delay[i] = 10
-							disposal[i] = gif.DisposalBackground
-						}
-
-						gif.EncodeAll(f, &gif.GIF{
-							Image:    oImgs,
-							Delay:    delay,
-							Disposal: disposal,
-						})
-					}
-
-					return nil
-				},
+				Action: DoChannelShift,
 			},
 		},
 	}
@@ -281,4 +186,116 @@ func parseCoord(coord string) (int, int, error) {
 		return 0, 0, err
 	}
 	return x, y, nil
+}
+
+func DoPixelSort(ctx *cli.Context) error {
+	sortDir := lib.Vertical
+	if strings.ToLower(ctx.String("direction")) == "horizontal" {
+		sortDir = lib.Horizontal
+	}
+
+	pixSort := ps.Must(ps.New(
+		ctx.String("path"),
+		ps.WithDirection(sortDir),
+		ps.WithSeed(ctx.Int64("seed")),
+		ps.WithThreshold(ctx.Int("threshold")),
+		ps.WithInvert(ctx.Bool("invert")),
+		ps.WithSortFunc(ctx.String("sortfunc")),
+		ps.WithThresholdFunc(ctx.String("thresholdfunc")),
+	))
+
+	img := pixSort.Sort()
+
+	f, err := os.Create(ctx.String("output") + ".png")
+	if err != nil {
+		return err
+	}
+	err = png.Encode(f, img)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func DoChannelShift(ctx *cli.Context) error {
+	rX, rY, err := parseCoord(ctx.String("red"))
+	if err != nil {
+		return err
+	}
+	gX, gY, err := parseCoord(ctx.String("green"))
+	if err != nil {
+		return err
+	}
+	bX, bY, err := parseCoord(ctx.String("blue"))
+	if err != nil {
+		return err
+	}
+	aX, aY, err := parseCoord(ctx.String("alpha"))
+	if err != nil {
+		return err
+	}
+
+	sortDir := lib.Vertical
+	if strings.ToLower(ctx.String("direction")) == "horizontal" {
+		sortDir = lib.Horizontal
+	}
+
+	chanShift := cs.Must(cs.New(ctx.String("path"),
+		cs.RedShift(rX, rY),
+		cs.GreenShift(gX, gY),
+		cs.BlueShift(bX, bY),
+		cs.AlphaShift(aX, aY),
+		cs.WithChunks(ctx.Int("chunk")),
+		cs.WithOffsetVolatility(ctx.Int("volatility")),
+		cs.WithSeed(ctx.Int64("seed")),
+		cs.WithAnimate(ctx.Int("animate")),
+		cs.WithChunkVolatility(ctx.Int("anivolatility")),
+		cs.WithDirection(sortDir),
+	))
+
+	imgs := chanShift.ShiftIterate()
+
+	// Single image channelshift
+	if len(imgs) == 1 {
+		img := imgs[0]
+		f, err := os.Create(ctx.String("output") + ".png")
+		if err != nil {
+			return err
+		}
+
+		err = png.Encode(f, img)
+		if err != nil {
+			return err
+		}
+	} else {
+		// animated gif channelshift
+		f, err := os.Create(ctx.String("output") + ".gif")
+		if err != nil {
+			return err
+		}
+
+		var palette color.Palette = append(palette.WebSafe, color.Transparent)
+
+		// Prepare gif options
+		delay := make([]int, len(imgs))
+		disposal := make([]byte, len(imgs))
+		oImgs := make([]*image.Paletted, len(imgs))
+		for i, img := range imgs {
+			bounds := img.Bounds()
+			dst := image.NewPaletted(bounds, palette)
+			draw.Draw(dst, bounds, img, bounds.Min, draw.Src)
+			oImgs[i] = dst
+
+			delay[i] = 10
+			disposal[i] = gif.DisposalBackground
+		}
+
+		gif.EncodeAll(f, &gif.GIF{
+			Image:    oImgs,
+			Delay:    delay,
+			Disposal: disposal,
+		})
+	}
+
+	return nil
 }
