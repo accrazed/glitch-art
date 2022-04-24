@@ -241,10 +241,10 @@ func DoChannelShift(ctx *cli.Context) error {
 	}
 
 	chanShift := cs.Must(cs.New(ctx.String("path"),
-		cs.RedShift(rX, rY),
-		cs.GreenShift(gX, gY),
-		cs.BlueShift(bX, bY),
-		cs.AlphaShift(aX, aY),
+		cs.WithRedShift(rX, rY),
+		cs.WithGreenShift(gX, gY),
+		cs.WithBlueShift(bX, bY),
+		cs.WithAlphaShift(aX, aY),
 		cs.WithChunks(ctx.Int("chunk")),
 		cs.WithOffsetVolatility(ctx.Int("volatility")),
 		cs.WithSeed(ctx.Int64("seed")),
