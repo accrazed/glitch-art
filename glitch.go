@@ -200,8 +200,8 @@ func DoPixelSort(ctx *cli.Context) error {
 		ps.WithSeed(ctx.Int64("seed")),
 		ps.WithThreshold(ctx.Int("threshold")),
 		ps.WithInvert(ctx.Bool("invert")),
-		ps.WithSortFunc(ctx.String("sortfunc")),
-		ps.WithThresholdFunc(ctx.String("thresholdfunc")),
+		ps.WithSortFuncString(ctx.String("sortfunc")),
+		ps.WithThresholdFuncString(ctx.String("thresholdfunc")),
 	))
 
 	img := pixSort.Sort()

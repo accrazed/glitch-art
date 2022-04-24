@@ -75,7 +75,7 @@ func WithThreshold(threshold int) NewOpt {
 	}
 }
 
-func WithSortFunc(sortFunc string) NewOpt {
+func WithSortFuncString(sortFunc string) NewOpt {
 	return func(ps *PixelSort) *PixelSort {
 		vPS := reflect.ValueOf(ps)
 
@@ -90,7 +90,7 @@ func WithSortFunc(sortFunc string) NewOpt {
 	}
 }
 
-func WithThresholdFunc(thresholdFunc string) NewOpt {
+func WithThresholdFuncString(thresholdFunc string) NewOpt {
 	return func(ps *PixelSort) *PixelSort {
 		vPS := reflect.ValueOf(ps)
 
