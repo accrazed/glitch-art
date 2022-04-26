@@ -16,6 +16,7 @@ require (
 	github.com/sunshineplan/imgconv v1.0.5 // indirect
 	github.com/sunshineplan/pdf v1.0.2 // indirect
 	github.com/sunshineplan/tiff v0.0.0-20220128141034-29b9d69bd906 // indirect
+	github.com/zergon321/reisen v0.1.4 // indirect
 	golang.org/x/image v0.0.0-20220413100746-70e8d0d3baa9 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
