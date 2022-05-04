@@ -39,7 +39,7 @@ func main() {
 						Name:     "seed",
 						Aliases:  []string{"s"},
 						Usage:    "seed to base random shit on",
-						Required: true,
+						Required: false,
 					},
 					&cli.IntFlag{
 						Name:     "threshold",
@@ -141,14 +141,20 @@ func main() {
 						Required: false,
 					},
 					&cli.StringFlag{
-						Name:     "direction",
+						Name:     "chunkdir",
 						Aliases:  []string{"d"},
 						Usage:    "Which direction to chunk the image in",
 						Required: false,
 					},
 					&cli.IntFlag{
-						Name:     "volatility",
-						Aliases:  []string{"v"},
+						Name:    "chunkvol",
+						Aliases: []string{"cv"},
+						Usage:   "How volatile to adjust the chunk width in every iteration",
+						Value:   0,
+					},
+					&cli.IntFlag{
+						Name:     "offsetvol",
+						Aliases:  []string{"ov"},
 						Usage:    "How strongly to shift pixels per chunk",
 						Required: false,
 					},
@@ -162,12 +168,6 @@ func main() {
 						Aliases: []string{"gif"},
 						Usage:   "Animate to several frames :)",
 						Value:   1,
-					},
-					&cli.IntFlag{
-						Name:    "anivolatility",
-						Aliases: []string{"aniv"},
-						Usage:   "How volatile to adjust the chunk value in every iteration",
-						Value:   0,
 					},
 				},
 				Action: DoChannelShift,
@@ -243,7 +243,7 @@ func DoChannelShift(ctx *cli.Context) error {
 	}
 
 	sortDir := lib.Vertical
-	if strings.ToLower(ctx.String("direction")) == "horizontal" {
+	if strings.ToLower(ctx.String("chunkdir")) == "horizontal" {
 		sortDir = lib.Horizontal
 	}
 
@@ -253,10 +253,10 @@ func DoChannelShift(ctx *cli.Context) error {
 		cs.WithBlueShift(bX, bY),
 		cs.WithAlphaShift(aX, aY),
 		cs.WithChunks(ctx.Int("chunk")),
-		cs.WithOffsetVolatility(ctx.Int("volatility")),
+		cs.WithOffsetVolatility(ctx.Int("offsetvol")),
 		cs.WithSeed(ctx.Int64("seed")),
 		cs.WithAnimate(ctx.Int("animate")),
-		cs.WithChunkVolatility(ctx.Int("anivolatility")),
+		cs.WithChunkVolatility(ctx.Int("chunkvol")),
 		cs.WithDirection(sortDir),
 	))
 

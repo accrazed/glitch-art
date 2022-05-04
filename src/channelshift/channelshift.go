@@ -73,22 +73,27 @@ func (cs *ChannelShift) Shift() image.Image {
 	}
 
 	outImg := lib.CopyImage(cs.image)
-	offset := 0
+	offsetR, offsetG, offsetB, offsetA := 0, 0, 0, 0
 
 	ch := make(chan bool)
 
 	// Iterate through slices perpendicular to chunking directions
 	for curSlice := 0; curSlice < numSlices; {
 		chunkSize := cs.chunk
-		if cs.chunkVol > 0 {
+		if cs.offsetVol > 0 {
 			chunkSize = cs.chunk + cs.rand.Intn(cs.chunkVol*2) - cs.chunkVol
-			offset = (cs.rand.Int() % (cs.offsetVol * 2)) - cs.offsetVol
+		}
+		if cs.offsetVol > 0 {
+			offsetR = (cs.rand.Int() % (cs.offsetVol * 2)) - cs.offsetVol
+			offsetG = (cs.rand.Int() % (cs.offsetVol * 2)) - cs.offsetVol
+			offsetB = (cs.rand.Int() % (cs.offsetVol * 2)) - cs.offsetVol
+			offsetA = (cs.rand.Int() % (cs.offsetVol * 2)) - cs.offsetVol
 		}
 
 		// Shift each slice
 		var cur int
 		for cur = 0; cur < chunkSize && cur+curSlice < numSlices; cur++ {
-			go func(slice, offset int) {
+			go func(slice, offsetR, offsetG, offsetB, offsetA int) {
 				for pos := 0; pos < numPos; pos++ {
 					sl, ps := numSlices, numPos
 					if cs.direction == lib.Horizontal {
@@ -98,14 +103,14 @@ func (cs *ChannelShift) Shift() image.Image {
 
 					old := lib.RGBA64toPix(slice, pos, cs.image.Stride)
 
-					rX, rY := (slice+cs.translate.r.X+offset)%sl,
-						(pos+cs.translate.r.Y+offset)%ps
-					gX, gY := (slice+cs.translate.g.X+offset)%sl,
-						(pos+cs.translate.g.Y+offset)%ps
-					bX, bY := (slice+cs.translate.b.X+offset)%sl,
-						(pos+cs.translate.b.Y+offset)%ps
-					aX, aY := (slice+cs.translate.a.X+offset)%sl,
-						(pos+cs.translate.a.Y+offset)%ps
+					rX, rY := (slice+cs.translate.r.X+offsetR)%sl,
+						(pos+cs.translate.r.Y+offsetR)%ps
+					gX, gY := (slice+cs.translate.g.X+offsetG)%sl,
+						(pos+cs.translate.g.Y+offsetG)%ps
+					bX, bY := (slice+cs.translate.b.X+offsetB)%sl,
+						(pos+cs.translate.b.Y+offsetB)%ps
+					aX, aY := (slice+cs.translate.a.X+offsetA)%sl,
+						(pos+cs.translate.a.Y+offsetA)%ps
 
 					newR := int(math.Abs(float64(lib.RGBA64toPix(rX, rY, cs.image.Stride))))
 					newG := int(math.Abs(float64(lib.RGBA64toPix(gX, gY, cs.image.Stride))))
@@ -130,7 +135,7 @@ func (cs *ChannelShift) Shift() image.Image {
 					}
 				}
 				ch <- true
-			}(curSlice+cur, offset)
+			}(curSlice+cur, offsetR, offsetG, offsetB, offsetA)
 		}
 		curSlice += cur
 	}
