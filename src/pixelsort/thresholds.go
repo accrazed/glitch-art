@@ -4,7 +4,7 @@ import "image/color"
 
 type ThresholdFunc func(color color.Color) bool
 
-const ThresholdScale = 256
+const ThresholdScale = 100
 
 // Only colors below the threshold will sort
 func (ps *PixelSort) LoThresholdColorMean(color color.Color) bool {
@@ -27,7 +27,7 @@ func (ps *PixelSort) OutThresholdColorMean(color color.Color) bool {
 	r, g, b, _ := color.RGBA()
 	v := int(float64((r+g+b)/3) / 0xFFFF * ThresholdScale)
 
-	return v < ps.threshold && v > ThresholdScale-ps.threshold
+	return v < ps.threshold || v > ThresholdScale-ps.threshold
 }
 
 // Only colors outside the range will sort
@@ -35,5 +35,5 @@ func (ps *PixelSort) InThresholdColorMean(color color.Color) bool {
 	r, g, b, _ := color.RGBA()
 	v := int(float64((r+g+b)/3) / 0xFFFF * ThresholdScale)
 
-	return v > ps.threshold || v < ThresholdScale-ps.threshold
+	return v > ps.threshold && v < ThresholdScale-ps.threshold
 }
