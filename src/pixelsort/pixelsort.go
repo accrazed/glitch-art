@@ -1,6 +1,7 @@
 package pixelsort
 
 import (
+	"fmt"
 	"image"
 	"image/color"
 	"sort"
@@ -10,16 +11,22 @@ import (
 
 type NewOpt func(*PixelSort) *PixelSort
 
+type coord struct {
+	x int
+	y int
+}
 type PixelSort struct {
-	image *image.RGBA64
+	image      *image.RGBA64
+	seed       int64
+	direction  lib.Direction
+	mask       map[coord]bool
+	invert     bool
+	chunkLimit int
 
-	seed          int64
-	direction     lib.Direction
-	invert        bool
-	threshold     int
-	chunkLimit    int
 	ThresholdFunc ThresholdFunc
-	SorterFunc    SorterFunc
+	threshold     int
+
+	SorterFunc SorterFunc
 }
 
 func Must(ps *PixelSort, err error) *PixelSort {
@@ -38,9 +45,10 @@ func New(path string, opts ...NewOpt) (*PixelSort, error) {
 	ps := &PixelSort{
 		image:     image,
 		threshold: -1,
+		mask:      make(map[coord]bool),
 	}
-	ps.SorterFunc = ps.MeanComp
 	ps.ThresholdFunc = ps.OutThresholdColorMean
+	ps.SorterFunc = ps.MeanComp
 
 	for _, opt := range opts {
 		ps = opt(ps)
@@ -66,6 +74,8 @@ func (ps *PixelSort) Sort() image.Image {
 	if ps.direction == lib.Horizontal {
 		pMin, pMax, sMin, sMax = min.Y, max.Y, min.X, max.X
 	}
+
+	ps.processThresholdMask()
 
 	// Iterate through each slice of pixels
 	ch := make(chan bool)
@@ -100,22 +110,45 @@ func (ps *PixelSort) Sort() image.Image {
 	return ps.image
 }
 
-// getChunkLength returns a chunk of pixels in the range from (slice,pos) according to ps.compFunc
-func (ps *PixelSort) getChunk(slice, pos, sMax int) []color.Color {
+// getChunkLength returns a chunk of pixels in the range from (slice,pos) according to the threshold mask
+func (ps *PixelSort) getChunk(slice, pos, slMax int) []color.Color {
 	res := make([]color.Color, 0)
 
-	for c, lim := pos, 0; c < sMax && lim < ps.chunkLimit; c, lim = c+1, lim+1 {
+	for c, lim := pos, 0; c < slMax && lim < ps.chunkLimit; c, lim = c+1, lim+1 {
 		sl := slice
 		cur := c
 		if ps.direction == lib.Horizontal {
 			sl, cur = cur, sl
 		}
 
-		if ps.ThresholdFunc(ps.image.At(sl, cur)) {
+		if ps.checkPixel(sl, cur) {
 			break
 		}
 		res = append(res, ps.image.At(sl, cur))
 	}
 
 	return res
+}
+
+// checkPixel refers to the threshMask to see if the current pixel passed a threshold and should be considered a "break" for the pixel sort
+func (ps *PixelSort) checkPixel(x, y int) bool {
+	return ps.mask[coord{x, y}]
+}
+
+// processThresholdMask runs ps.ThresholdFunc on every pixel in an image, updating the threshMask as it processes
+func (ps *PixelSort) processThresholdMask() error {
+	if ps.ThresholdFunc == nil {
+		return fmt.Errorf("processThresholdMask: ps.ThresholdFunc is nil")
+	}
+
+	for x := 0; x < ps.image.Rect.Dx(); x++ {
+		for y := 0; y < ps.image.Rect.Dy(); y++ {
+			passes := ps.ThresholdFunc(ps.image.At(x, y))
+			if passes {
+				ps.mask[coord{x, y}] = true
+			}
+		}
+	}
+
+	return nil
 }
