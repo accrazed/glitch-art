@@ -19,7 +19,7 @@ type PixelSort struct {
 	image      *image.RGBA64
 	seed       int64
 	direction  lib.Direction
-	mask       map[coord]bool
+	mask       [][]bool
 	invert     bool
 	chunkLimit int
 
@@ -42,10 +42,14 @@ func New(path string, opts ...NewOpt) (*PixelSort, error) {
 		return nil, err
 	}
 
+	mask := make([][]bool, image.Rect.Dy())
+	for i := range mask {
+		mask[i] = make([]bool, image.Rect.Dx())
+	}
 	ps := &PixelSort{
 		image:     image,
 		threshold: -1,
-		mask:      make(map[coord]bool),
+		mask:      mask,
 	}
 	ps.ThresholdFunc = ps.OutThresholdColorMean
 	ps.SorterFunc = ps.MeanComp
@@ -132,7 +136,7 @@ func (ps *PixelSort) getChunk(slice, pos, slMax int) []color.Color {
 
 // checkPixel refers to the threshMask to see if the current pixel passed a threshold and should be considered a "break" for the pixel sort
 func (ps *PixelSort) checkPixel(x, y int) bool {
-	return ps.mask[coord{x, y}]
+	return ps.mask[y][x]
 }
 
 // processThresholdMask runs ps.ThresholdFunc on every pixel in an image, updating the threshMask as it processes
@@ -145,7 +149,7 @@ func (ps *PixelSort) processThresholdMask() error {
 		for y := 0; y < ps.image.Rect.Dy(); y++ {
 			passes := ps.ThresholdFunc(ps.image.At(x, y))
 			if passes {
-				ps.mask[coord{x, y}] = true
+				ps.mask[y][x] = true
 			}
 		}
 	}
