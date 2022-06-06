@@ -1,4 +1,4 @@
-package main
+package cli
 
 import (
 	"image"
@@ -19,7 +19,7 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-func main() {
+func RunCLI() {
 	app := &cli.App{
 		Name:        "Glitch Art",
 		Description: "glitch your images!",
