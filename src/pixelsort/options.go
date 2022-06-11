@@ -43,7 +43,6 @@ func WithSortFuncString(sortFunc string) NewOpt {
 			panic(fmt.Sprintf("sort func %s not found", sortFunc))
 		}
 		vPS.Elem().FieldByName("SorterFunc").Set(vMethod)
-
 	}
 }
 
@@ -57,7 +56,6 @@ func WithThresholdFuncString(thresholdFunc string) NewOpt {
 			panic(fmt.Sprintf("threshold func %s not found", thresholdFunc))
 		}
 		vPS.Elem().FieldByName("ThresholdFunc").Set(vMethod)
-
 	}
 }
 

@@ -9,7 +9,6 @@ import (
 	"github.com/accrazed/glitch-art/src/lib"
 )
 
-type NewOpt func(*ChannelShift) *ChannelShift
 
 type ChannelShift struct {
 	translate Translate
@@ -45,7 +44,7 @@ func New(path string, opts ...NewOpt) (*ChannelShift, error) {
 
 	cs := &ChannelShift{image: img}
 	for _, opt := range opts {
-		cs = opt(cs)
+		opt(cs)
 	}
 
 	if cs.rand == nil {

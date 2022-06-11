@@ -9,12 +9,6 @@ import (
 	"github.com/accrazed/glitch-art/src/lib"
 )
 
-type NewOpt func(*PixelSort) *PixelSort
-
-type coord struct {
-	x int
-	y int
-}
 type PixelSort struct {
 	image      *image.RGBA64
 	seed       int64
@@ -55,7 +49,7 @@ func New(path string, opts ...NewOpt) (*PixelSort, error) {
 	ps.SorterFunc = ps.MeanComp
 
 	for _, opt := range opts {
-		ps = opt(ps)
+		opt(ps)
 	}
 
 	if ps.chunkLimit == 0 {

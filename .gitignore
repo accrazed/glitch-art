@@ -2,4 +2,5 @@
 *.jpg
 *.jpeg
 *.gif
-images/
+*.webp
+img/
