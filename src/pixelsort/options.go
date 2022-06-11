@@ -7,36 +7,34 @@ import (
 	"github.com/accrazed/glitch-art/src/lib"
 )
 
+type NewOpt func(*PixelSort)
+
 func WithDirection(dir lib.Direction) NewOpt {
-	return func(ps *PixelSort) *PixelSort {
+	return func(ps *PixelSort) {
 		ps.direction = dir
-		return ps
 	}
 }
 
 func WithSeed(seed int64) NewOpt {
-	return func(ps *PixelSort) *PixelSort {
+	return func(ps *PixelSort) {
 		ps.seed = seed
-		return ps
 	}
 }
 
 func WithThreshold(threshold int) NewOpt {
-	return func(ps *PixelSort) *PixelSort {
+	return func(ps *PixelSort) {
 		ps.threshold = threshold
-		return ps
 	}
 }
 
 func WithChunkLimit(lim int) NewOpt {
-	return func(ps *PixelSort) *PixelSort {
+	return func(ps *PixelSort) {
 		ps.chunkLimit = lim
-		return ps
 	}
 }
 
 func WithSortFuncString(sortFunc string) NewOpt {
-	return func(ps *PixelSort) *PixelSort {
+	return func(ps *PixelSort) {
 		vPS := reflect.ValueOf(ps)
 
 		vMethod := vPS.MethodByName(sortFunc)
@@ -46,12 +44,11 @@ func WithSortFuncString(sortFunc string) NewOpt {
 		}
 		vPS.Elem().FieldByName("SorterFunc").Set(vMethod)
 
-		return ps
 	}
 }
 
 func WithThresholdFuncString(thresholdFunc string) NewOpt {
-	return func(ps *PixelSort) *PixelSort {
+	return func(ps *PixelSort) {
 		vPS := reflect.ValueOf(ps)
 
 		vMethod := vPS.MethodByName(thresholdFunc)
@@ -61,13 +58,11 @@ func WithThresholdFuncString(thresholdFunc string) NewOpt {
 		}
 		vPS.Elem().FieldByName("ThresholdFunc").Set(vMethod)
 
-		return ps
 	}
 }
 
 func WithInvert(invert bool) NewOpt {
-	return func(ps *PixelSort) *PixelSort {
+	return func(ps *PixelSort) {
 		ps.invert = invert
-		return ps
 	}
 }

@@ -11,8 +11,10 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	cs "github.com/accrazed/glitch-art/src/channelshift"
+	"github.com/accrazed/glitch-art/src/corrupt/jpg"
 	"github.com/accrazed/glitch-art/src/lib"
 	ps "github.com/accrazed/glitch-art/src/pixelsort"
 
@@ -172,6 +174,43 @@ func RunCLI() {
 				},
 				Action: DoChannelShift,
 			},
+			{
+				Name:        "corrupt",
+				Description: "corrupt your images :)",
+				Aliases:     []string{"c"},
+				Subcommands: []*cli.Command{
+					{
+						Name:  "jpg",
+						Usage: "corrupt jpg images. May corrupt to the point of image error",
+						Flags: []cli.Flag{
+							&cli.StringFlag{
+								Name:     "path",
+								Aliases:  []string{"p"},
+								Usage:    "path to your jpg image",
+								Required: true,
+							},
+							&cli.Int64Flag{
+								Name:    "seed",
+								Aliases: []string{"s"},
+								Value:   time.Now().Unix(),
+							},
+							&cli.IntFlag{
+								Name:    "corruptStrength",
+								Aliases: []string{"cs"},
+								Value:   1e4,
+							},
+							&cli.StringFlag{
+								Name:     "output",
+								Aliases:  []string{"o"},
+								Usage:    "filename to output as",
+								Value:    "output",
+								Required: false,
+							},
+						},
+						Action: DoCorruptJPEG,
+					},
+				},
+			},
 		},
 	}
 
@@ -302,6 +341,30 @@ func DoChannelShift(ctx *cli.Context) error {
 			Delay:    delay,
 			Disposal: disposal,
 		})
+	}
+
+	return nil
+}
+
+func DoCorruptJPEG(ctx *cli.Context) error {
+	jc := jpg.Must(jpg.New(
+		ctx.String("path"),
+		jpg.WithSeed(ctx.Int64("seed")),
+		jpg.WithCorruptStrength(ctx.Int("corruptStrength")),
+	))
+
+	jpeg, err := jc.Corrupt()
+	if err != nil {
+		return err
+	}
+
+	outf, err := os.Create(ctx.String("output"))
+	if err != nil {
+		panic(err)
+	}
+	_, err = outf.Write(jpeg)
+	if err != nil {
+		panic(err)
 	}
 
 	return nil
