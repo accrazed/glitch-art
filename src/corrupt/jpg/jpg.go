@@ -7,6 +7,9 @@ import (
 	"math/rand"
 	"os"
 	"strings"
+	"time"
+
+	"github.com/accrazed/glitch-art/src/corrupt"
 )
 
 const (
@@ -15,15 +18,12 @@ const (
 	JPEGMarkerOffset = 2
 )
 
-type JPEGBytes []byte
-
 type JPEGCorrupt struct {
-	seed int64
-	rand *rand.Rand
+	r *rand.Rand
 	// Recommended 1e4. The lower the strength, the more likely the a byte is to corrupt
-	corruptStrength int
+	strength int
 
-	jpeg JPEGBytes
+	header, data, eof []byte
 }
 
 func Must(jpeg *JPEGCorrupt, err error) *JPEGCorrupt {
@@ -49,53 +49,44 @@ func New(path string, opts ...NewOpt) (*JPEGCorrupt, error) {
 		return nil, err
 	}
 
-	jc := &JPEGCorrupt{
-		corruptStrength: -1,
-		jpeg:            bb,
-	}
-
-	for _, opt := range opts {
-		opt(jc)
-	}
-
-	return jc, nil
-}
-
-func (c *JPEGCorrupt) Corrupt() ([]byte, error) {
-	// find data start
 	var start int
-	for i := 0; i < len(c.jpeg); i++ {
-		if c.jpeg[i] == FF && c.jpeg[i+1] == DA {
-			SOSLen := int(c.jpeg[i+2])<<8 + int(c.jpeg[i+3])
+	for i := 0; i < len(bb); i++ {
+		if bb[i] == FF && bb[i+1] == DA {
+			SOSLen := int(bb[i+2])<<8 + int(bb[i+3])
 			start = i + SOSLen
 			break
 		}
 	}
 
-	header := c.jpeg[:start]
-	data := c.jpeg[start : len(c.jpeg)-JPEGMarkerOffset]
-	eof := c.jpeg[len(c.jpeg)-JPEGMarkerOffset:]
-
-	// corrupt
-	corrupted := make([]byte, 0)
-	cpy := byte(0)
-	for _, b := range data {
-		// do a corruption
-		if c.rand.Intn(c.corruptStrength) < 1 {
-			switch c.rand.Intn(4) {
-			case 0: // change bit
-				b = byte(c.rand.Intn((1 << 32)))
-			case 1: // ignore bit
-				continue
-			case 2: // copy bit
-				cpy = b
-			case 3: // paste bit
-				b = cpy
-			}
-		}
-		corrupted = append(corrupted, b)
+	c := &JPEGCorrupt{
+		strength: -1,
+		header:   bb[:start],
+		data:     bb[start : len(bb)-JPEGMarkerOffset],
+		eof:      bb[len(bb)-JPEGMarkerOffset:],
 	}
 
-	res := append(append(header, corrupted...), eof...)
-	return res, nil
+	for _, opt := range opts {
+		opt(c)
+	}
+
+	if c.r == nil {
+		c.r = rand.New(rand.NewSource(time.Now().Unix()))
+	}
+
+	return c, nil
+}
+
+func (c *JPEGCorrupt) Build() []byte {
+	return append(c.header, append(c.data, c.eof...)...)
+}
+
+func (c *JPEGCorrupt) Corrupt() *JPEGCorrupt {
+	// corrupt
+	c.data = corrupt.New(c.data).
+		SetRand(c.r).
+		SetStrength(c.strength).
+		Defect().Replace().
+		Data()
+
+	return c
 }

@@ -16,7 +16,6 @@ func WithChunks(dist int) NewOpt {
 
 func WithSeed(seed int64) NewOpt {
 	return func(cs *ChannelShift) {
-		cs.seed = seed
 		cs.rand = rand.New(rand.NewSource(seed))
 	}
 }

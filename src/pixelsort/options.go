@@ -2,6 +2,7 @@ package pixelsort
 
 import (
 	"fmt"
+	"math/rand"
 	"reflect"
 
 	"github.com/accrazed/glitch-art/src/lib"
@@ -17,7 +18,7 @@ func WithDirection(dir lib.Direction) NewOpt {
 
 func WithSeed(seed int64) NewOpt {
 	return func(ps *PixelSort) {
-		ps.seed = seed
+		ps.r = rand.New(rand.NewSource(seed))
 	}
 }
 

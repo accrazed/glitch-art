@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"math/rand"
 	"sort"
 
 	"github.com/accrazed/glitch-art/src/lib"
@@ -11,11 +12,11 @@ import (
 
 type PixelSort struct {
 	image      *image.RGBA64
-	seed       int64
 	direction  lib.Direction
 	mask       [][]bool
 	invert     bool
 	chunkLimit int
+	r          *rand.Rand
 
 	ThresholdFunc ThresholdFunc
 	threshold     int
@@ -60,13 +61,17 @@ func New(path string, opts ...NewOpt) (*PixelSort, error) {
 	}
 
 	if ps.threshold == -1 {
-		ps.threshold = int((ps.seed % ThresholdScale))
+		ps.threshold = ps.r.Intn(ThresholdScale)
 	}
 
 	return ps, nil
 }
 
-func (ps *PixelSort) Sort() image.Image {
+func (ps *PixelSort) Image() image.Image {
+	return ps.image
+}
+
+func (ps *PixelSort) Sort() *PixelSort {
 	min, max := ps.image.Bounds().Min, ps.image.Bounds().Max
 	pMin, pMax, sMin, sMax := min.X, max.X, min.Y, max.Y
 	if ps.direction == lib.Horizontal {
@@ -105,7 +110,7 @@ func (ps *PixelSort) Sort() image.Image {
 		<-ch
 	}
 
-	return ps.image
+	return ps
 }
 
 // getChunkLength returns a chunk of pixels in the range from (slice,pos) according to the threshold mask

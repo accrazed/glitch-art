@@ -250,7 +250,7 @@ func DoPixelSort(ctx *cli.Context) error {
 		ps.WithChunkLimit(ctx.Int("chunklim")),
 	))
 
-	img := pixSort.Sort()
+	img := pixSort.Sort().Image()
 
 	f, err := os.Create(ctx.String("output") + ".png")
 	if err != nil {
@@ -353,12 +353,9 @@ func DoCorruptJPEG(ctx *cli.Context) error {
 		jpg.WithCorruptStrength(ctx.Int("corruptStrength")),
 	))
 
-	jpeg, err := jc.Corrupt()
-	if err != nil {
-		return err
-	}
+	jpeg := jc.Corrupt().Build()
 
-	outf, err := os.Create(ctx.String("output"))
+	outf, err := os.Create(ctx.String("output") + ".jpg")
 	if err != nil {
 		panic(err)
 	}

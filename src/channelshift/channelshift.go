@@ -9,11 +9,9 @@ import (
 	"github.com/accrazed/glitch-art/src/lib"
 )
 
-
 type ChannelShift struct {
 	translate Translate
 	image     *image.RGBA64
-	seed      int64
 	rand      *rand.Rand
 	direction lib.Direction
 	offsetVol int
