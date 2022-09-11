@@ -6,6 +6,7 @@ import (
 	"image/color"
 	"math/rand"
 	"sort"
+	"sync"
 
 	"github.com/accrazed/glitch-art/src/lib"
 )
@@ -81,9 +82,11 @@ func (ps *PixelSort) Sort() *PixelSort {
 	ps.processThresholdMask()
 
 	// Iterate through each slice of pixels
-	ch := make(chan bool)
+	wg := sync.WaitGroup{}
 	for slice := pMin; slice < pMax; slice++ {
+		wg.Add(1)
 		go func(slice int) {
+			defer wg.Done()
 			// Iterate through pixels
 			for pos := sMin; pos < sMax; pos++ {
 				// Group and sort chunk
@@ -103,12 +106,9 @@ func (ps *PixelSort) Sort() *PixelSort {
 
 				pos += len(chunk)
 			}
-			ch <- true
 		}(slice)
 	}
-	for i := pMin; i < pMax; i++ {
-		<-ch
-	}
+	wg.Wait()
 
 	return ps
 }

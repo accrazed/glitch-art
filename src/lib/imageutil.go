@@ -39,6 +39,8 @@ func NewImage(path string) (*image.RGBA64, error) {
 	return image, nil
 }
 
+// Converts an X,Y pixel location to the relevant stride location (Pix format).
+// See the img lib for more info.
 func RGBA64toPix(x, y, stride int) int {
 	return y*stride + x*8
 }
