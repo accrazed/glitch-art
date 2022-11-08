@@ -4,6 +4,7 @@ import "image/color"
 
 type SorterFunc func(a, b color.Color) bool
 
+var SortTypes = []string{"MeanComp", "RedComp", "GreenComp", "BlueComp"}
 
 func (ps *PixelSort) MeanComp(a, b color.Color) bool {
 	aR, aG, aB, _ := a.RGBA()

@@ -6,6 +6,8 @@ type ThresholdFunc func(color color.Color) bool
 
 const ThresholdScale = 100
 
+var ThresholdTypes = []string{"LoThresholdColorMean", "HiThresholdColorMean", "OutThresholdColorMean", "InThresholdColorMean"}
+
 // Only colors below the threshold will sort
 func (ps *PixelSort) LoThresholdColorMean(color color.Color) bool {
 	r, g, b, _ := color.RGBA()
