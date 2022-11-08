@@ -68,11 +68,7 @@ func New(path string, opts ...NewOpt) (*PixelSort, error) {
 	return ps, nil
 }
 
-func (ps *PixelSort) Image() image.Image {
-	return ps.image
-}
-
-func (ps *PixelSort) Sort() *PixelSort {
+func (ps *PixelSort) Sort() *image.RGBA64 {
 	min, max := ps.image.Bounds().Min, ps.image.Bounds().Max
 	pMin, pMax, sMin, sMax := min.X, max.X, min.Y, max.Y
 	if ps.direction == lib.Horizontal {
@@ -82,6 +78,7 @@ func (ps *PixelSort) Sort() *PixelSort {
 	ps.processThresholdMask()
 
 	// Iterate through each slice of pixels
+	outImg := lib.CopyImageBounds(ps.image)
 	wg := sync.WaitGroup{}
 	for slice := pMin; slice < pMax; slice++ {
 		wg.Add(1)
@@ -101,7 +98,7 @@ func (ps *PixelSort) Sort() *PixelSort {
 					if ps.direction == lib.Horizontal {
 						sl, p = p, sl
 					}
-					ps.image.Set(sl, p, c)
+					outImg.Set(sl, p, c)
 				}
 
 				pos += len(chunk)
@@ -110,7 +107,7 @@ func (ps *PixelSort) Sort() *PixelSort {
 	}
 	wg.Wait()
 
-	return ps
+	return outImg
 }
 
 // getChunkLength returns a chunk of pixels in the range from (slice,pos) according to the threshold mask

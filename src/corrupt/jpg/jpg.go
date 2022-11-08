@@ -85,7 +85,7 @@ func (c *JPEGCorrupt) Corrupt() *JPEGCorrupt {
 	c.data = corrupt.New(c.data).
 		SetRand(c.r).
 		SetStrength(c.strength).
-		Defect().Replace().
+		Delete().Replace().Defect().
 		Data()
 
 	return c

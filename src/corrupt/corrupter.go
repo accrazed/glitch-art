@@ -68,8 +68,8 @@ func (c *Corrupter) Replace() *Corrupter {
 	return c
 }
 
-// Defect deletes random parts of data
-func (c *Corrupter) Defect() *Corrupter {
+// Delete deletes random parts of data
+func (c *Corrupter) Delete() *Corrupter {
 	j := 0
 	for _, b := range c.data {
 		if c.r.Intn(c.strength) != 0 {
@@ -78,6 +78,17 @@ func (c *Corrupter) Defect() *Corrupter {
 		}
 	}
 	c.data = c.data[:j]
+
+	return c
+}
+
+// Delete replaces random parts of data with empty strings
+func (c *Corrupter) Defect() *Corrupter {
+	for i := range c.data {
+		if c.r.Intn(c.strength) == 0 {
+			c.data[i] = byte(0)
+		}
+	}
 
 	return c
 }

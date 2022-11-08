@@ -250,7 +250,7 @@ func DoPixelSort(ctx *cli.Context) error {
 		ps.WithChunkLimit(ctx.Int("chunklim")),
 	))
 
-	img := pixSort.Sort().Image()
+	img := pixSort.Sort()
 
 	f, err := os.Create(ctx.String("output") + ".png")
 	if err != nil {

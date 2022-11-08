@@ -6,13 +6,17 @@ import (
 	"github.com/sunshineplan/imgconv"
 )
 
-func CopyImage(img image.Image, flip ...bool) *image.RGBA64 {
+func CopyImageBounds(img image.Image, flip ...bool) *image.RGBA64 {
 	bounds := img.Bounds()
 	if len(flip) > 0 && flip[0] {
 		bounds = image.Rect(bounds.Min.Y, bounds.Min.X, bounds.Max.Y, bounds.Max.X)
 	}
 
-	res := image.NewRGBA64(bounds)
+	return image.NewRGBA64(bounds)
+}
+
+func CopyImage(img image.Image, flip ...bool) *image.RGBA64 {
+	res := CopyImageBounds(img, flip...)
 
 	min, max := res.Bounds().Min, res.Bounds().Max
 
