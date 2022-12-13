@@ -78,7 +78,7 @@ func (ps *PixelSort) Sort() *image.RGBA64 {
 	ps.processThresholdMask()
 
 	// Iterate through each slice of pixels
-	outImg := lib.CopyImageBounds(ps.image)
+	outImg := lib.CopyImage(ps.image)
 	wg := sync.WaitGroup{}
 	for slice := pMin; slice < pMax; slice++ {
 		wg.Add(1)
