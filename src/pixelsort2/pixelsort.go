@@ -61,19 +61,36 @@ func New(path string, opts ...NewOpt) (*PixelSort, error) {
 }
 
 func (ps *PixelSort) Sort() *image.RGBA64 {
-	min, max := ps.image.Bounds().Min, ps.image.Bounds().Max
 
 	// create slice channel
-	slices := make(chan []uint8)
+	sliceChan := getSlices(ps.image)
+
+	// break slices into sortable chunks
+	chunkChan := getChunks(sliceChan, ps.ThresholdFunc)
+
+	// sort chunk channel
+	sortChunks(chunkChan, ps.SorterFunc, ps.invert)
+
+	return ps.image
+}
+
+func getSlices(image *image.RGBA64) (slices chan []uint8) {
+	min, max := image.Bounds().Min, image.Bounds().Max
+
+	slices = make(chan []uint8)
 	go func(slices chan []uint8) {
 		defer close(slices)
 		for y := min.Y; y < max.Y; y++ {
-			slices <- ps.image.Pix[ps.image.PixOffset(0, y):ps.image.PixOffset(0, y+1)]
+			slices <- image.Pix[image.PixOffset(0, y):image.PixOffset(0, y+1)]
 		}
 	}(slices)
 
-	// break slices into sortable chunks
-	chunks := make(chan []uint8)
+	return slices
+}
+
+func getChunks(slices <-chan []uint8, thresholdFunc ThresholdFunc) (chunks chan []uint8) {
+	chunks = make(chan []uint8)
+
 	go func(chunks chan<- []uint8, slices <-chan []uint8) {
 		defer close(chunks)
 
@@ -86,7 +103,7 @@ func (ps *PixelSort) Sort() *image.RGBA64 {
 				start := 0
 				for end := 0; end < len(slice); end += 8 {
 					pixel := slice[end : end+8 : end+8]
-					if !ps.ThresholdFunc(pixel) {
+					if !thresholdFunc(pixel) {
 						continue
 					}
 
@@ -109,26 +126,25 @@ func (ps *PixelSort) Sort() *image.RGBA64 {
 		wg.Wait()
 	}(chunks, slices)
 
-	// sort chunks
+	return chunks
+}
+
+func sortChunks(chunks <-chan []uint8, sorterFunc SorterFunc, invert bool) {
 	var wg sync.WaitGroup
 	for chunk := range chunks {
 		wg.Add(1)
 		go func(chunk []uint8) {
 			defer wg.Done()
 
-			pixS := &chunkSorter{
+			cs := &chunkSorter{
 				pixels:   chunk,
-				sortFunc: ps.SorterFunc,
-				invert:   ps.invert,
+				sortFunc: sorterFunc,
+				invert:   invert,
 			}
-
-			sort.Sort(pixS)
-
+			sort.Sort(cs)
 		}(chunk)
 	}
 	wg.Wait()
-
-	return ps.image
 }
 
 type chunkSorter struct {
