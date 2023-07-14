@@ -73,37 +73,36 @@ func (ps *PixelSort) Sort() *image.RGBA64 {
 	}(slices)
 
 	// break slices into sortable chunks
-	chunks := make(chan [][]uint8)
-	go func(chunks chan<- [][]uint8, slices <-chan []uint8) {
+	chunks := make(chan []uint8)
+	go func(chunks chan<- []uint8, slices <-chan []uint8) {
 		defer close(chunks)
 
 		var wg sync.WaitGroup
 		for slice := range slices {
 			wg.Add(1)
-			go func(chunks chan<- [][]uint8, slice []uint8) {
+			go func(chunks chan<- []uint8, slice []uint8) {
 				defer wg.Done()
 
-				chunk := [][]uint8{}
-				for pix := 0; pix < len(slice); pix += 8 {
-					pixel := slice[pix : pix+8 : pix+8]
+				start := 0
+				for end := 0; end < len(slice); end += 8 {
+					pixel := slice[end : end+8 : end+8]
 					if !ps.ThresholdFunc(pixel) {
-						chunk = append(chunk, pixel)
 						continue
 					}
 
-					if len(chunk) == 0 {
+					if end-start == 0 {
 						continue
 					}
-					if len(chunk) == 1 {
-						chunk = (chunk)[1:]
+					if end-start == 8 {
+						start = end
 						continue
 					}
 
-					chunks <- chunk
-					chunk = [][]uint8{}
+					chunks <- slice[start:end]
+					start = end
 				}
-				if len(chunk) > 1 {
-					chunks <- chunk
+				if len(slice)-start > 8 {
+					chunks <- slice[start:]
 				}
 			}(chunks, slice)
 		}
@@ -114,19 +113,17 @@ func (ps *PixelSort) Sort() *image.RGBA64 {
 	var wg sync.WaitGroup
 	for chunk := range chunks {
 		wg.Add(1)
-		go func(chunk [][]uint8) {
+		go func(chunk []uint8) {
 			defer wg.Done()
 
-			refs := make([][]uint8, len(chunk))
-			copy(refs, chunk)
-			sort.Slice(chunk, func(i, j int) bool {
-				return ps.SorterFunc(chunk[i], chunk[j]) != ps.invert
-			})
-
-			for i, pixel := range chunk {
-				// pixel = []uint8{0, 0, 0, 0, 0, 0, 0, 0}
-				refs[i] = pixel
+			pixS := &chunkSorter{
+				pixels:   chunk,
+				sortFunc: ps.SorterFunc,
+				invert:   ps.invert,
 			}
+
+			sort.Sort(pixS)
+
 		}(chunk)
 	}
 	wg.Wait()
@@ -134,27 +131,29 @@ func (ps *PixelSort) Sort() *image.RGBA64 {
 	return ps.image
 }
 
-type pixSorter struct {
-	src      []uint8
-	pixels   [][]uint8
+type chunkSorter struct {
+	pixels   []uint8
 	sortFunc SorterFunc
+	invert   bool
 }
 
-func (p *pixSorter) Len() int {
-	return len(p.pixels)
+func (p *chunkSorter) Len() int {
+	return len(p.pixels) / 8
 }
 
-func (p *pixSorter) Swap(i, j int) {
-	p.pixels[i], p.pixels[j] = p.pixels[j], p.pixels[i]
-
+func (p *chunkSorter) Swap(i, j int) {
 	tmp := make([]uint8, 8)
-	copy(tmp, p.pixels[i])
-	copy(p.pixels[i], p.pixels[j])
-	copy(p.pixels[j], tmp)
+
+	iPix, jPix := p.pixels[i*8:i*8+8], p.pixels[j*8:j*8+8]
+	copy(tmp, iPix)
+	copy(iPix, jPix)
+	copy(jPix, tmp)
 }
 
-func (p *pixSorter) Less(i, j int) bool {
-	return p.sortFunc(p.pixels[i], p.pixels[j])
+func (p *chunkSorter) Less(i, j int) bool {
+	iPix, jPix := p.pixels[i*8:i*8+8], p.pixels[j*8:j*8+8]
+
+	return p.sortFunc(iPix, jPix) != p.invert
 }
 
-var _ sort.Interface = (*pixSorter)(nil)
+var _ sort.Interface = (*chunkSorter)(nil)
