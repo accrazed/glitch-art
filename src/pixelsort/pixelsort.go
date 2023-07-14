@@ -101,6 +101,7 @@ func (ps *PixelSort) Sort() *image.RGBA64 {
 						if ps.direction == lib.Horizontal {
 							sl, p = p, sl
 						}
+						// c = color.Transparent
 						ps.image.Set(sl, p, c)
 					}
 				}(chunk, slice, pos)

@@ -16,7 +16,7 @@ import (
 	cs "github.com/accrazed/glitch-art/src/channelshift"
 	"github.com/accrazed/glitch-art/src/corrupt/jpg"
 	"github.com/accrazed/glitch-art/src/lib"
-	ps "github.com/accrazed/glitch-art/src/pixelsort"
+	ps "github.com/accrazed/glitch-art/src/pixelsort2"
 
 	"github.com/urfave/cli/v2"
 )

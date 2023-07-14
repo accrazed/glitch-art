@@ -76,12 +76,14 @@ func (cs *ChannelShift) Shift() image.Image {
 	// Iterate through slices perpendicular to chunking directions
 	wg := sync.WaitGroup{}
 	for curSlice := 0; curSlice < numSlices; {
-		wg.Add(1)
-
 		// Generate volatility values, if set
 		chunkSize := cs.chunk
 		if cs.offsetVol > 0 {
-			chunkSize = cs.chunk + cs.rand.Intn(cs.chunkVol*2) - cs.chunkVol
+			chVol := 0
+			if cs.chunkVol > 0 {
+				chVol = cs.rand.Intn(cs.chunkVol * 2)
+			}
+			chunkSize = cs.chunk + chVol - cs.chunkVol
 
 			offsetR = (cs.rand.Int() % (cs.offsetVol * 2)) - cs.offsetVol
 			offsetG = (cs.rand.Int() % (cs.offsetVol * 2)) - cs.offsetVol
@@ -92,6 +94,7 @@ func (cs *ChannelShift) Shift() image.Image {
 		// Shift each slice
 		var cur int
 		for cur = 0; cur < chunkSize && cur+curSlice < numSlices; cur++ {
+			wg.Add(1)
 			go func(slice, offsetR, offsetG, offsetB, offsetA int) {
 				defer wg.Done()
 
