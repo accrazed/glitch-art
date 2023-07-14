@@ -1,9 +1,7 @@
 package pixelsort
 
 import (
-	"fmt"
 	"image"
-	"image/color"
 	"math/rand"
 	"sort"
 	"sync"
@@ -14,7 +12,6 @@ import (
 type PixelSort struct {
 	image      *image.RGBA64
 	direction  lib.Direction
-	mask       [][]bool
 	invert     bool
 	chunkLimit int
 	r          *rand.Rand
@@ -38,14 +35,9 @@ func New(path string, opts ...NewOpt) (*PixelSort, error) {
 		return nil, err
 	}
 
-	mask := make([][]bool, image.Rect.Dy())
-	for i := range mask {
-		mask[i] = make([]bool, image.Rect.Dx())
-	}
 	ps := &PixelSort{
 		image:     image,
 		threshold: -1,
-		mask:      mask,
 	}
 	ps.ThresholdFunc = ps.OutThresholdColorMean
 	ps.SorterFunc = ps.MeanComp
@@ -69,91 +61,115 @@ func New(path string, opts ...NewOpt) (*PixelSort, error) {
 }
 
 func (ps *PixelSort) Sort() *image.RGBA64 {
-	min, max := ps.image.Bounds().Min, ps.image.Bounds().Max
-	pMin, pMax, sMin, sMax := min.X, max.X, min.Y, max.Y
-	if ps.direction == lib.Horizontal {
-		pMin, pMax, sMin, sMax = min.Y, max.Y, min.X, max.X
-	}
 
-	ps.processThresholdMask()
+	// create slice channel
+	sliceChan := getSlices(ps.image)
 
-	// Iterate through each slice of pixels
-	wg := sync.WaitGroup{}
-	for slice := pMin; slice < pMax; slice++ {
-		wg.Add(1)
-		go func(slice int) {
-			defer wg.Done()
-			// Iterate through pixels
-			for pos := sMin; pos < sMax; pos++ {
-				// Group and sort chunk
-				chunk := ps.getChunk(slice, pos, sMax)
+	// break slices into sortable chunks
+	chunkChan := getChunks(sliceChan, ps.ThresholdFunc)
 
-				wg.Add(1)
-				go func(chunk []color.Color, slice, pos int) {
-					defer wg.Done()
-					sort.Slice(chunk, func(i, j int) bool {
-						return ps.SorterFunc(chunk[i], chunk[j]) != ps.invert
-					})
-
-					// Save data
-					for i, c := range chunk {
-						sl, p := slice, pos+i
-						if ps.direction == lib.Horizontal {
-							sl, p = p, sl
-						}
-						// c = color.Transparent
-						ps.image.Set(sl, p, c)
-					}
-				}(chunk, slice, pos)
-
-				pos += len(chunk)
-			}
-		}(slice)
-	}
-	wg.Wait()
+	// sort chunk channel
+	sortChunks(chunkChan, ps.SorterFunc, ps.invert)
 
 	return ps.image
 }
 
-// getChunkLength returns a chunk of pixels in the range from (slice,pos) according to the threshold mask
-func (ps *PixelSort) getChunk(slice, pos, slMax int) []color.Color {
-	res := make([]color.Color, 0)
+func getSlices(image *image.RGBA64) (slices chan []uint8) {
+	min, max := image.Bounds().Min, image.Bounds().Max
 
-	for c, lim := pos, 0; c < slMax && lim < ps.chunkLimit; c, lim = c+1, lim+1 {
-		sl := slice
-		cur := c
-		if ps.direction == lib.Horizontal {
-			sl, cur = cur, sl
+	slices = make(chan []uint8)
+	go func(slices chan []uint8) {
+		defer close(slices)
+		for y := min.Y; y < max.Y; y++ {
+			slices <- image.Pix[image.PixOffset(0, y):image.PixOffset(0, y+1)]
 		}
+	}(slices)
 
-		if ps.checkPixel(sl, cur) {
-			break
-		}
-		res = append(res, ps.image.At(sl, cur))
-	}
-
-	return res
+	return slices
 }
 
-// checkPixel refers to the threshMask to see if the current pixel passed a threshold and should be considered a "break" for the pixel sort
-func (ps *PixelSort) checkPixel(x, y int) bool {
-	return ps.mask[y][x]
+func getChunks(slices <-chan []uint8, thresholdFunc ThresholdFunc) (chunks chan []uint8) {
+	chunks = make(chan []uint8)
+
+	go func(chunks chan<- []uint8, slices <-chan []uint8) {
+		defer close(chunks)
+
+		var wg sync.WaitGroup
+		for slice := range slices {
+			wg.Add(1)
+			go func(chunks chan<- []uint8, slice []uint8) {
+				defer wg.Done()
+
+				start := 0
+				for end := 0; end < len(slice); end += 8 {
+					pixel := slice[end : end+8 : end+8]
+					if !thresholdFunc(pixel) {
+						continue
+					}
+
+					if end-start == 0 {
+						continue
+					}
+					if end-start == 8 {
+						start = end
+						continue
+					}
+
+					chunks <- slice[start:end]
+					start = end
+				}
+				if len(slice)-start > 8 {
+					chunks <- slice[start:]
+				}
+			}(chunks, slice)
+		}
+		wg.Wait()
+	}(chunks, slices)
+
+	return chunks
 }
 
-// processThresholdMask runs ps.ThresholdFunc on every pixel in an image, updating the threshMask as it processes
-func (ps *PixelSort) processThresholdMask() error {
-	if ps.ThresholdFunc == nil {
-		return fmt.Errorf("processThresholdMask: ps.ThresholdFunc is nil")
-	}
+func sortChunks(chunks <-chan []uint8, sorterFunc SorterFunc, invert bool) {
+	var wg sync.WaitGroup
+	for chunk := range chunks {
+		wg.Add(1)
+		go func(chunk []uint8) {
+			defer wg.Done()
 
-	for x := 0; x < ps.image.Rect.Dx(); x++ {
-		for y := 0; y < ps.image.Rect.Dy(); y++ {
-			passes := ps.ThresholdFunc(ps.image.At(x, y))
-			if passes {
-				ps.mask[y][x] = true
+			cs := &chunkSorter{
+				pixels:   chunk,
+				sortFunc: sorterFunc,
+				invert:   invert,
 			}
-		}
+			sort.Sort(cs)
+		}(chunk)
 	}
-
-	return nil
+	wg.Wait()
 }
+
+type chunkSorter struct {
+	pixels   []uint8
+	sortFunc SorterFunc
+	invert   bool
+}
+
+func (p *chunkSorter) Len() int {
+	return len(p.pixels) / 8
+}
+
+func (p *chunkSorter) Swap(i, j int) {
+	tmp := make([]uint8, 8)
+
+	iPix, jPix := p.pixels[i*8:i*8+8], p.pixels[j*8:j*8+8]
+	copy(tmp, iPix)
+	copy(iPix, jPix)
+	copy(jPix, tmp)
+}
+
+func (p *chunkSorter) Less(i, j int) bool {
+	iPix, jPix := p.pixels[i*8:i*8+8], p.pixels[j*8:j*8+8]
+
+	return p.sortFunc(iPix, jPix) != p.invert
+}
+
+var _ sort.Interface = (*chunkSorter)(nil)
