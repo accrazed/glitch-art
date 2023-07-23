@@ -61,7 +61,6 @@ func New(path string, opts ...NewOpt) (*PixelSort, error) {
 }
 
 func (ps *PixelSort) Sort() *image.RGBA64 {
-
 	// create slice channel
 	sliceChan := getSlices(ps.image)
 
@@ -131,8 +130,10 @@ func getChunks(slices <-chan []uint8, thresholdFunc ThresholdFunc) (chunks chan 
 
 func sortChunks(chunks <-chan []uint8, sorterFunc SorterFunc, invert bool) {
 	var wg sync.WaitGroup
+
 	for chunk := range chunks {
 		wg.Add(1)
+
 		go func(chunk []uint8) {
 			defer wg.Done()
 
