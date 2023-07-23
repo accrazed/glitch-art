@@ -10,37 +10,48 @@ import (
 type Smearer struct {
 	img *image.RGBA64
 	r   *rand.Rand
+
+	strength uint
+
+	smearPos int
+	smearLen int
 }
 
-func New(path string, seed int64) (*Smearer, error) {
+func New(path string, opts ...SmearOpt) (*Smearer, error) {
 	img, err := lib.NewImage(path)
 	if err != nil {
 		return nil, err
 	}
-	r := rand.New(rand.NewSource(seed))
 
 	s := &Smearer{
 		img: img,
-		r:   r,
+	}
+
+	for _, opt := range opts {
+		opt(s)
 	}
 
 	return s, nil
 }
 
 func (s *Smearer) Smear() image.Image {
-	smearPos := s.r.Intn(s.img.Bounds().Dy())
-	smearLen := s.r.Intn(s.img.Bounds().Dy()/10) + (s.img.Bounds().Dy() / 10)
+	if s.smearPos == 0 {
+		s.smearPos = s.r.Intn(s.img.Bounds().Dy())
+	}
+	if s.smearLen == 0 {
+		s.smearLen = s.r.Intn(s.img.Bounds().Dy() / int(s.strength))
+	}
 
-	for i := 0; i < smearLen; i++ {
-		slStart := s.img.PixOffset(0, smearPos)
-		slEnd := s.img.PixOffset(0, smearPos+1)
+	for i := 0; i < s.smearLen; i++ {
+		slStart := s.img.PixOffset(0, s.smearPos)
+		slEnd := s.img.PixOffset(0, s.smearPos+1)
 		s.img.Pix = append(
 			s.img.Pix[:slEnd], append(s.img.Pix[slStart:slEnd], s.img.Pix[slEnd:]...)...)
 	}
 
 	s.img.Rect = image.Rect(
 		s.img.Rect.Min.X, s.img.Rect.Min.Y,
-		s.img.Rect.Max.X, s.img.Rect.Max.Y+smearLen)
+		s.img.Rect.Max.X, s.img.Rect.Max.Y+s.smearLen)
 
 	return s.img
 }

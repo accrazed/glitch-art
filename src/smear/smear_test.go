@@ -13,7 +13,9 @@ import (
 )
 
 func TestSmear(t *testing.T) {
-	smearer, err := smear.New("fixtures/unsmeared.jpg", 0)
+	smearer, err := smear.New("fixtures/unsmeared.jpg",
+		smear.WithSeed(0),
+		smear.WithStrength(10))
 	assert.NoError(t, err)
 
 	img := smearer.Smear()
