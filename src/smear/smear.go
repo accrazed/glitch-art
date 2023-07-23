@@ -1,7 +1,6 @@
 package smear
 
 import (
-	"fmt"
 	"image"
 	"math/rand"
 
@@ -32,8 +31,6 @@ func (s *Smearer) Smear() image.Image {
 	smearPos := s.r.Intn(s.img.Bounds().Dy())
 	smearLen := s.r.Intn(s.img.Bounds().Dy()/10) + (s.img.Bounds().Dy() / 10)
 
-	fmt.Printf("before - dy: %v, len(pix): %v\n\n", s.img.Bounds().Dy(), len(s.img.Pix))
-
 	for i := 0; i < smearLen; i++ {
 		slStart := s.img.PixOffset(0, smearPos)
 		slEnd := s.img.PixOffset(0, smearPos+1)
@@ -44,13 +41,6 @@ func (s *Smearer) Smear() image.Image {
 	s.img.Rect = image.Rect(
 		s.img.Rect.Min.X, s.img.Rect.Min.Y,
 		s.img.Rect.Max.X, s.img.Rect.Max.Y+smearLen)
-
-	fmt.Printf("smearPos: %v, smearLen: %v\n\nafter - dy: %v, len(pix): %v\n",
-		smearPos,
-		smearLen,
-		s.img.Bounds().Dy(),
-		len(s.img.Pix)/s.img.Stride,
-	)
 
 	return s.img
 }
